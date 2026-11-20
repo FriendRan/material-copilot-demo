@@ -6,13 +6,19 @@
 
 ### 当前选择：Render 免费 Web Service
 
-Sites 的 `chatgpt.site` 域名在目标网络被拦截，Vercel 账号登录受阻，因此改用 Render；保留同一套职责展示和真实 DeepSeek 对话。是否可在面试官网络访问，需要上线后实际验证，不能仅凭构建成功判断。
+正式体验地址：**[料知 Demo](https://material-copilot-demo.onrender.com/)**。
+
+Render 部署状态已确认 `live`，匿名公网访问与真实 DeepSeek 对话已通过验证，项目作者也已确认手机可打开演示台。此前 Sites 地址在目标网络被拦截，Vercel 账号登录受阻，均不作为当前面试入口。
+
+当前服务由官方 Render CLI 在作者的 My Workspace 中直接创建，使用 **Free / Singapore**，没有数据库或付费实例。平台配置是当前服务的事实来源；仓库 `render.yaml` 用于在新环境复现，不要再为当前服务创建另一套 Blueprint。自动部署关闭；今后更新应用代码须先检查 GitHub 测试结果，再手动发布目标提交。README 或验收记录变更不触发无必要的服务重启。
+
+以下是从仓库复现部署的步骤：
 
 1. 在 Render 登录并授权读取 GitHub 的 `FriendRan/material-copilot-demo`，从仓库创建 Blueprint，使用根目录的 `render.yaml`。该配置只创建一个 **Free Web Service**，没有数据库或付费实例。
 2. 首次创建时，在 Render 的私密输入框填写 `DEEPSEEK_API_KEY`，不要填写到 YAML、GitHub 或聊天里。`DEMO_SESSION_SECRET` 由平台自动生成；`LLM_MODEL` 默认为 `deepseek-flash`。这些变量仅在服务端使用。
-3. 构建命令为 `node scripts/build-online.mjs`，启动命令为 `node online/node-server.mjs`，Node.js 24，健康检查路径 `/healthz`。若手动创建服务，务必选 **Web Service / Free**，配置相同命令和三个运行时变量（包括自己生成的随机会话密钥）。
+3. 构建命令为 `node scripts/build-online.mjs`，启动命令为 `node online/node-server.mjs`，Node.js 24，健康检查路径 `/healthz`。运行应用没有第三方依赖，设置 `SKIP_INSTALL_DEPS=true` 跳过托管端安装测试依赖。若手动创建服务，务必选 **Web Service / Free**，配置相同命令和运行时变量（包括自己生成的随机会话密钥）。
 4. Render 自动注入 `PORT` 和 `RENDER_EXTERNAL_URL`。新入口监听 `0.0.0.0` 并使用固定的公共 HTTPS 域名做同源校验；原本的 `server.mjs` 仍只允许本机访问，不用它启动托管服务。
-5. 发布后匿名验证首页、`/api/config`、真实模型请求、BOM 修复与导出；验证 `.env` 和服务端源码不可访问、无会话或跨站请求被拒绝，再在 README 加入正式链接。
+5. 发布后匿名验证首页、`/api/config`、真实模型请求、BOM 修复与导出；验证 `.env` 和服务端源码不可访问、无会话或跨站请求被拒绝，确认目标网络可以打开页面，再将自己的正式链接加入 README。
 
 构建产物只包含白名单内的公开资源和应用代码，不读取本机 `.env`。HTTP 入口不暴露任意文件读取功能。`/healthz` 仅返回存活状态，不调用模型、不返回密钥。
 
@@ -20,7 +26,7 @@ Sites 的 `chatgpt.site` 域名在目标网络被拦截，Vercel 账号登录受
 
 官方文档：[Web Service](https://render.com/docs/web-services)、[免费方案限制](https://render.com/docs/free)、[Blueprint](https://render.com/docs/blueprint-spec)、[环境变量](https://render.com/docs/configure-environment-variables)。
 
-本机验证：43 项自动测试通过；构建产物经 Node HTTP 入口调用真实 DeepSeek，能把“四层、10厘米乘8厘米、十块”提取为 `4层 / 100 × 80 mm / 10`，后续“二十块，其他不变”仅建议数量改为 `20`。该验证使用构造需求，密钥仅在进程内读取；公网发布和目标网络验收仍待完成。
+验证记录：43 项自动测试通过，本机托管入口的 2 条真实模型请求通过；正式 Render 服务另外通过 8 条真实对话检查，覆盖四类意图、补齐缺项、确认或拒绝数量变更、不确定意图反问，以及 BOM 合并、异常定位和修复后两种模板的导出内容。公开资产与本地测试来源一致；`.env` 和服务端源码路径返回 404，无会话请求返回 401、跨站请求返回 403、非法参数返回 400。使用构造需求，报告不保存密钥或会话 Cookie。详见 [在线验收记录](acceptance/render-online.json)。页面事件检查使用 Happy DOM，不代表原生浏览器布局或操作系统下载行为已全面验证。
 
 ### 保留的 Vercel 适配（当前不发布）
 
@@ -33,7 +39,7 @@ Sites 的 `chatgpt.site` 域名在目标网络被拦截，Vercel 账号登录受
 
 `online/worker.mjs` 提供 Worker 运行入口。`node scripts/build-online.mjs` 将公开 HTML/CSS/JS 和服务端处理代码构建为 `dist/server/index.js`。原有 `node server.mjs` 本地方式保持可用。
 
-构建只读取公开资源白名单与代码文件，不读取 `.env`。部署归档仅包含 Worker 构建产物和 hosting manifest，不包含本机环境文件、依赖、个人资料或测试记录。Sites 备选项目的密钥单独存于 Secret 配置，未写入源码；这个域名不作为当前面试入口。
+构建只读取公开资源白名单与代码文件，不读取 `.env`。部署归档仅包含 Worker 构建产物和 hosting manifest，不包含本机环境文件、依赖、个人资料或测试记录。此前 Sites 项目的密钥已移除并重新发布，不再提供真实模型调用；这个域名不作为当前面试入口。
 
 Sites 部署工作副本由 `.openai/hosting.json` 绑定到固定项目；以后更新必须复用同一个项目 ID。GitHub 保留可复现的构建脚本与 Worker 源码，托管副本不包含本地密钥。
 

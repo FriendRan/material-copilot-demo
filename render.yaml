@@ -5,13 +5,15 @@ services:
     plan: free
     region: singapore
     branch: main
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: "off"
     buildCommand: node scripts/build-online.mjs
     startCommand: node online/node-server.mjs
     healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION
         value: 24
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
       - key: DEEPSEEK_API_KEY
         sync: false
       - key: DEMO_SESSION_SECRET

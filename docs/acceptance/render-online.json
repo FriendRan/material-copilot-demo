@@ -1,0 +1,105 @@
+{
+  "checkedAt": "2026-11-20T16:54:28.306Z",
+  "url": "https://material-copilot-demo.onrender.com",
+  "sourceCommit": "445e202b0157d2b4560f1b176873d1bd5465732b",
+  "environment": "Anonymous public HTTP + real hosted DeepSeek API + Happy DOM page events. Deployed assets match local sources. Synthetic data only; no native browser layout or OS download verification.",
+  "checks": [
+    {
+      "message": "四层板，长十厘米宽八厘米，先做十块，工艺和交期稍后补充。",
+      "route": "报参数",
+      "proposal": {
+        "base": "{}",
+        "updates": {
+          "layers": "4层",
+          "size": "100 × 80 mm",
+          "quantity": "10"
+        },
+        "clear": []
+      },
+      "reply": "好的，已记下四层板、100 × 80 mm、10 块；工艺和交期等你补充。另外 BOM 里有两处封装问题：第 6 行型号或封装缺失，第 7 行 RC0603 的封装需匹配为 0603，建议核对一下。参数仅为建议，请查看确认卡片。"
+    },
+    {
+      "message": "工艺用沉金，交期七天。",
+      "route": "报参数",
+      "proposal": {
+        "base": "{\"layers\":\"4层\",\"size\":\"100 × 80 mm\",\"quantity\":\"10\"}",
+        "updates": {
+          "process": "沉金",
+          "delivery": "7天"
+        },
+        "clear": []
+      },
+      "reply": "好的，工艺沉金、交期七天。参数仅为建议，请查看确认卡片。"
+    },
+    {
+      "message": "沉金和喷锡有什么区别？只是咨询，不要修改。",
+      "route": "问参数",
+      "proposal": null,
+      "reply": "沉金和喷锡是两种常见表面工艺，一般区别：沉金平整度好、适合细间距和长期存放，成本较高；喷锡（热风整平）成本低、可焊性好，但表面平整度不如沉金。具体选哪种还要看你的元件间距和存储周期，这点可以让工程师核对。这次参数不变。"
+    },
+    {
+      "message": "AMS1117 有替代料吗？先给我核对思路。",
+      "route": "问替代料",
+      "proposal": null,
+      "reply": "AMS1117 的替代料核对思路：先确认输入/输出电流和压差，再看固定电压还是可调、封装是否兼容、散热余量够不够，最后核对静态电流和稳定性要求。一般替代会看同系列或兼容 LDO；具体能不能替，需要工程师核对。本次打样参数没有要改的地方。"
+    },
+    {
+      "message": "数量改成二十块，其他不变。",
+      "route": "报参数",
+      "proposal": {
+        "base": "{\"layers\":\"4层\",\"size\":\"100 × 80 mm\",\"quantity\":\"10\",\"process\":\"沉金\",\"delivery\":\"7天\"}",
+        "updates": {
+          "quantity": "20"
+        },
+        "clear": []
+      },
+      "reply": "好的，数量从 10 块改成 20 块，其他参数不变。参数仅为建议，请查看确认卡片。BOM 里那两处封装问题仍需核对。"
+    },
+    {
+      "message": "再改成三十块。",
+      "route": "报参数",
+      "proposal": {
+        "base": "{\"layers\":\"4层\",\"size\":\"100 × 80 mm\",\"quantity\":\"20\",\"process\":\"沉金\",\"delivery\":\"7天\"}",
+        "updates": {
+          "quantity": "30"
+        },
+        "clear": []
+      },
+      "reply": "好的，数量从 20 块改成 30 块，其他参数不变。参数仅为建议，请查看确认卡片。BOM 里第 6 行缺型号或封装、第 7 行 RC0603 封装需匹配 0603 这两处仍需核对。"
+    },
+    {
+      "message": "帮我导出打样需求单。",
+      "route": "要出单",
+      "proposal": null,
+      "reply": "现在还不能导出：BOM 校验有 4 个问题（第 2 行 R2 位号与第 1 行重复、第 3 行 RC0603 应匹配 0603 封装、第 4 行数量需为正整数且与位号数量一致）。请先把这些问题改好，我再帮你出单。"
+    },
+    {
+      "message": "我还没想清楚要做哪一步。",
+      "route": "待确认",
+      "proposal": null,
+      "reply": "没关系，先不着急改参数。你现在可以做三件事：一是看看已确认的打样参数（4层、100×80mm、20块、沉金、7天）有没有要调整的；二是先处理 BOM 里的重复位号和封装问题；三是确认好后导出打样需求单。你想先做哪一步？"
+    }
+  ],
+  "security": {
+    "privatePathsBlocked": true,
+    "keyAbsentFromPublicAssetsAndConfig": true,
+    "unsignedRequest": 401,
+    "crossOriginRequest": 403,
+    "invalidParameters": 400
+  },
+  "bom": {
+    "mergedRows": 3,
+    "quantityAndRefsConserved": true,
+    "anomaliesLocated": true,
+    "repair": true,
+    "exportTemplates": 2,
+    "totalBoards": 20,
+    "totalForThreeResistors": 60
+  },
+  "result": "passed",
+  "targetNetwork": {
+    "confirmedBy": "project author",
+    "device": "mobile browser",
+    "result": "料知演示台可打开"
+  }
+}
