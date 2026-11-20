@@ -1,0 +1,106 @@
+{
+  "checkedAt": "2026-11-20T14:43:00.236Z",
+  "environment": "Happy DOM events + real local API + real DeepSeek; synthetic in-memory session. No graphical browser or OS download verification.",
+  "checks": [
+    {
+      "message": "四层板，长十厘米宽八厘米，先做十块，工艺和交期我下一条再告诉你。",
+      "route": "报参数",
+      "reply": "好的，四层板，100 × 80 mm，10 块，这三项先按建议值记入确认卡片，工艺和交期等你下一条再补。",
+      "proposal": {
+        "base": "{}",
+        "updates": {
+          "layers": "4层",
+          "size": "100 × 80 mm",
+          "quantity": "10"
+        },
+        "clear": []
+      }
+    },
+    {
+      "message": "工艺用沉金。",
+      "route": "报参数",
+      "reply": "好的，工艺建议改为沉金。还差交期，请告诉我想几天后交货，或指定具体日期。",
+      "proposal": {
+        "base": "{\"layers\":\"4层\",\"size\":\"100 × 80 mm\",\"quantity\":\"10\"}",
+        "updates": {
+          "process": "沉金"
+        },
+        "clear": []
+      }
+    },
+    {
+      "message": "交期七天。",
+      "route": "报参数",
+      "reply": "好的，交期按 7 天记入建议值，请查看确认卡片。参数还未最终确认，确认后才更新。",
+      "proposal": {
+        "base": "{\"layers\":\"4层\",\"size\":\"100 × 80 mm\",\"quantity\":\"10\",\"process\":\"沉金\"}",
+        "updates": {
+          "delivery": "7天"
+        },
+        "clear": []
+      }
+    },
+    {
+      "message": "沉金和喷锡有什么区别？只是咨询，不要修改。",
+      "route": "问参数",
+      "reply": "两者都是常见表面处理：喷锡（热风整平）成本低、可焊性好，但焊盘平整度一般；沉金平整、适合细间距和长期存放，成本更高。你这块 100 × 80 mm 四层板选哪种最终看器件密度和预算。本轮只是咨询，参数不变。",
+      "proposal": null
+    },
+    {
+      "message": "AMS1117 有替代料吗？先给我核对思路。",
+      "route": "问替代料",
+      "reply": "AMS1117 的替代料一般要先核对几点：输入输出电压和压差、最大电流与功耗、封装是否对得上、是否需要固定或可调版本，以及外围电容要求。常见思路是按这些规格找同系列或同封装的其他 LDO，但具体兼容性建议让工程师核对，我这里没有实时库存和规格书可查。参数这轮不修改。",
+      "proposal": null
+    },
+    {
+      "message": "数量改成二十块，其它不变。",
+      "route": "报参数",
+      "reply": "好的，数量建议改为 20 块，其它参数不变，请查看确认卡片。",
+      "proposal": {
+        "base": "{\"layers\":\"4层\",\"size\":\"100 × 80 mm\",\"quantity\":\"10\",\"process\":\"沉金\",\"delivery\":\"7天\"}",
+        "updates": {
+          "quantity": "20"
+        },
+        "clear": []
+      }
+    },
+    {
+      "message": "数量再改成三十块。",
+      "route": "报参数",
+      "reply": "好的，数量建议从 20 块改为 30 块，其它参数不变，请查看确认卡片。",
+      "proposal": {
+        "base": "{\"layers\":\"4层\",\"size\":\"100 × 80 mm\",\"quantity\":\"20\",\"process\":\"沉金\",\"delivery\":\"7天\"}",
+        "updates": {
+          "quantity": "30"
+        },
+        "clear": []
+      }
+    },
+    {
+      "message": "如果改成六层有什么影响？先不要改。",
+      "route": "问参数",
+      "reply": "改成 6 层通常会增加层数成本、压合次数和打样周期，走线空间更宽裕、电源完整性也更好，但未必是这块 100 × 80 mm 小板的必要选择。本轮只是咨询，参数不变；要改的话请明确说“改成六层”。另外 BOM 还有两处封装问题需要处理。",
+      "proposal": null
+    },
+    {
+      "message": "帮我导出打样需求单。",
+      "route": "要出单",
+      "reply": "现在还不能导出：BOM 有 4 处异常需要先处理，分别是 R2 位号重复、RC0603 型号对应的封装不匹配、第 4 行数量不是正整数、第 4 行数量与位号数量不一致。请先修复这些 BOM 问题，再导出需求单。",
+      "proposal": null
+    },
+    {
+      "message": "我还没想清楚要做哪一步。",
+      "route": "待确认",
+      "reply": "没关系，先不用急着定。我可以帮你核对或解释参数、比较工艺，也能解答替代料问题，需要时再导出需求单。你想先聊哪一块？",
+      "proposal": null
+    }
+  ],
+  "bom": {
+    "mergeRows": 3,
+    "anomaliesLocated": true,
+    "repair": true,
+    "exportTemplates": 2,
+    "totalBoards": 20
+  },
+  "result": "passed"
+}

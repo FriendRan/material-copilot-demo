@@ -1,0 +1,24 @@
+name: Demo regression tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.25.0'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned test dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run offline regression tests
+        run: node --test tests/*.test.mjs
+      - name: Check tracked content for credentials
+        run: node scripts/check-secrets.mjs
