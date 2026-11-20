@@ -1,0 +1,22 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# Machine-local state and credentials
+.codex/
+.agents/
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+
+# Historical UI captures and superseded one-off verification output
+docs/*preview.jpg
+docs/live-model-results.json
+coverage/
+test-results/
+playwright-report/
