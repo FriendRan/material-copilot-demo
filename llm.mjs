@@ -2,7 +2,7 @@ import {fields,mergeBom} from './public/core.js';
 export class ServiceError extends Error {
   constructor(code,message,status=502){super(message);this.code=code;this.status=status;}
 }
-export function modelConfig(env=process.env){
+export function modelConfig(env=globalThis.process?.env||{}){
   const baseUrl=(env.LLM_BASE_URL||'https://api.deepseek.com').replace(/\/+$/,'');
   const model=env.LLM_MODEL||'deepseek-flash',key=env.DEEPSEEK_API_KEY||'';
   let valid=false;

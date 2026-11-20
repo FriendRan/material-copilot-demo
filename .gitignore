@@ -20,3 +20,7 @@ docs/live-model-results.json
 coverage/
 test-results/
 playwright-report/
+dist/
+.sites-runtime/
+.sites-checkout/
+.vercel/

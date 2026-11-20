@@ -175,7 +175,7 @@ function renderModel(){
   $('#chat-form button[type="submit"]').disabled=modelBusy;
   $('#model-mode').disabled=modelBusy;
   document.querySelectorAll('[data-prompt]').forEach(button=>button.disabled=modelBusy);
-  $('#model-config').textContent=$('#model-mode').value==='rules'?'离线演示：采用原有规则，不调用模型。':modelInfo.loading?'正在检查服务端配置…':modelInfo.configured?`已配置 ${modelInfo.model}。发送时会将最近对话、已确认参数和 BOM 校验摘要交给 DeepSeek。`:'DeepSeek 尚未配置。请在本机 .env 填写密钥并重启服务，然后检查配置。BOM 和人工交接仍可使用。';
+  $('#model-config').textContent=$('#model-mode').value==='rules'?'离线演示：采用原有规则，不调用模型。':modelInfo.loading?'正在检查服务端配置…':modelInfo.configured?`${modelInfo.hosted?'在线模型':'已配置'} ${modelInfo.model}。发送时会将最近对话、已确认参数和 BOM 校验摘要交给 DeepSeek。${modelInfo.hosted?'额度用完仍可切换离线模式体验完整职责流程。':''}`:modelInfo.hosted?'在线模型暂不可用，可切换离线规则演示；BOM 和人工交接仍可使用。':'DeepSeek 尚未配置。请在本机 .env 填写密钥并重启服务，然后检查配置。BOM 和人工交接仍可使用。';
   $('.mode').textContent=$('#model-mode').value==='rules'?'离线规则模式':modelInfo.configured?'DeepSeek 已配置':'DeepSeek 待配置';
   const proposal=state.proposal;
   $('#parameter-proposal').classList.toggle('hidden',!proposal);
@@ -204,7 +204,7 @@ async function requestModel(text){
   }catch(error){if(seq!==requestSequence)return;modelBusy=false;$('#model-error-text').textContent=error.name==='AbortError'?'请求已超时，现有参数未改变。可以重试或转人工。':error.message;$('#model-error').classList.remove('hidden');render();}
   finally{clearTimeout(timer);}
 }
-async function refreshModel(){modelInfo.loading=true;render();try{const response=await fetch('/api/config');if(!response.ok)throw Error();modelInfo={...await response.json(),loading:false};}catch{modelInfo={configured:false,loading:false};}render();}
+async function refreshModel(){modelInfo.loading=true;render();try{const response=await fetch('/api/config',{credentials:'same-origin'});if(!response.ok)throw Error();modelInfo={...await response.json(),loading:false};if(modelInfo.hosted&&!$('#online-note'))$('.demo-guide').insertAdjacentHTML('beforebegin','<p id="online-note" class="online-note">在线面试体验 · 无需安装。请使用构造示例数据；对话草稿保留在当前浏览器。模型体验达到限制后，可选择离线规则演示继续操作。</p>');}catch{modelInfo={configured:false,loading:false};}render();}
 $('#model-mode').onchange=()=>{if(state.proposal){$('#model-mode').value=state.mode||'deepseek';toast('请先确认或放弃待处理的参数变更，再切换模式。');return;}state.mode=$('#model-mode').value;delete state.pending;delete state.pendingEngine;delete state.route;$('#model-error').classList.add('hidden');render();};
 $('#refresh-model').onclick=refreshModel;
 $('#cancel-model').onclick=()=>cancelModel(true);
