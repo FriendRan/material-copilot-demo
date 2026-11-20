@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: material-copilot-demo
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: node scripts/build-online.mjs
+    startCommand: node online/node-server.mjs
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEMO_SESSION_SECRET
+        generateValue: true
+      - key: LLM_MODEL
+        value: deepseek-flash
