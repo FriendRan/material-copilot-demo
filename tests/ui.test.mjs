@@ -3,6 +3,27 @@ import assert from 'node:assert/strict';
 import {mount,baseParams,flush,waitFor} from './ui-harness.mjs';
 const answer=(overrides={})=>({reply:'请确认本次建议。',intent:'collect',updates:{},clear_fields:[],handoff:'none',handoff_reason:'',model:'test-model',...overrides});
 
+test('页面：对话与 BOM 分页切换保留待确认变更、输入草稿及当前参数',async()=>{
+  const page=await mount({seed:{params:baseParams}});try{
+    assert.equal(page.$('#bom-view').classList.contains('hidden'),true);
+    page.submit('改成20块');page.$('#chat-input').value='交期再讨论';page.$('#chat-input').dispatchEvent(new page.win.Event('input'));
+    page.$('.next-step [data-view="bom-view"]').click();
+    assert.equal(page.$('#workspace').classList.contains('hidden'),true);assert.equal(page.$('#bom-view').classList.contains('hidden'),false);
+    assert.equal(page.$('.nav[data-view="bom-view"]').getAttribute('aria-current'),'page');
+    assert.equal(page.state().params.quantity,'10');assert.equal(page.state().proposal.updates.quantity,'20');assert.equal(page.$('#export').disabled,true);
+    page.$('.nav[data-view="workspace"]').click();assert.equal(page.$('#chat-input').value,'交期再讨论');page.$('#confirm-params').click();assert.equal(page.state().params.quantity,'20');
+  }finally{await page.close();}
+});
+
+test('页面：BOM 示例切到独立校验页，继续自助回到可见的对话输入',async()=>{
+  const page=await mount({seed:{params:baseParams}});try{
+    page.$('#load-anomalies').click();assert.equal(page.$('#bom-view').classList.contains('hidden'),false);
+    assert.equal(page.$('#export').disabled,true);page.$('#repair').click();assert.equal(page.$('#export').disabled,false);
+    page.$('#human-support').click();page.$('#resume-assistant').click();
+    assert.equal(page.$('#workspace').classList.contains('hidden'),false);assert.equal(page.win.document.activeElement.id,'chat-input');assert.deepEqual(page.state().params,baseParams);
+  }finally{await page.close();}
+});
+
 test('页面：四类意图去向正确，问参数/替料不改需求，缺项或异常拦截出单',async()=>{
   const page=await mount();try{
     for(const [text,label] of [['沉金和喷锡有什么区别？','问参数'],['AMS1117有替料吗','问替代料'],['导出需求单','要出单'],['4层，100x80mm，10块','报参数']]){

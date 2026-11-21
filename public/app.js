@@ -24,7 +24,7 @@ function recordParams(before,after){
 }
 function renderRouting(){
   const route=state.route;
-  $('#routing').innerHTML='<div class="route-label">'+(modelBusy?'正在判断意图…':route?'当前分流：<b>'+escape(route.label)+'</b>':'发送一句需求，观察四类分流')+'</div><div class="route-options">'+['问参数','报参数','问替代料','要出单'].map(label=>`<span class="${route?.label===label?'selected':''}">${label}</span>`).join('')+'</div><p>'+escape(route?routeActions[route.label]||'确认需求后继续处理':'意图不明确时先反问确认，不直接进入后续流程。')+'</p>'+(route?'<small>判断来源：'+escape(route.source)+'</small>':'');
+  $('#routing').innerHTML='<div class="route-label">'+(modelBusy?'正在判断意图…':route?'当前分流：<b>'+escape(route.label)+'</b>':'等待输入需求')+'</div><details class="route-details"><summary>分流说明</summary><div class="route-options">'+['问参数','报参数','问替代料','要出单'].map(label=>`<span class="${route?.label===label?'selected':''}">${label}</span>`).join('')+'</div><p>'+escape(route?routeActions[route.label]||'确认需求后继续处理':'意图不明确时先反问确认，不直接进入后续流程。')+'</p>'+(route?'<small>判断来源：'+escape(route.source)+'</small>':'')+'</details>';
 }
 function renderMessages(){
   $('#messages').innerHTML=state.messages.map((m,index)=>`<div class="message ${m.role==='user'?'user':'assistant'}"><div class="avatar">${m.role==='user'?'你':'料'}</div><div class="bubble">${escape(m.text).replaceAll('\n','<br>')}<div class="message-meta">${m.role==='user'?'你':escape(m.source||'料知 · 自动助手')}${m.time?' · '+escape(m.time):''}</div>${m.role==='assistant'&&index>0?`<div class="feedback"><button data-feedback="${index}" data-value="yes" ${m.feedback?'disabled':''}>${m.feedback==='yes'?'✓ 已帮助到我':'有帮助'}</button><button data-feedback="${index}" data-value="no" ${m.feedback?'disabled':''}>${m.feedback==='no'?'已记录未解决':'未解决'}</button></div>`:''}</div></div>`).join('');
@@ -72,7 +72,7 @@ function respond(text,forced){
     message('assistant',`【报参数】${state.proposal?'建议 '+changed.join('；')+'。请在下方确认后写入需求清单。':changed.length?'这些参数与已确认值一致，无需重复修改。':'未提取到有效参数，请用“4层 / 100x80mm / 10块 / 沉金 / 7天”这样的格式。'}${state.proposal?'':missing?'\n接下来请补充'+fields[missing]+'。':'\n五项参数已齐全，请继续核对 BOM。'}`);
   }else if(intent==='要出单'){
     const result=mergeBom(state.rows),missing=Object.keys(fields).filter(key=>!state.params[key]);
-    message('assistant',missing.length?`【要出单】还缺${missing.map(key=>fields[key]).join('、')}。请先补充${fields[missing[0]]}。`:result.issues.length?`【要出单】发现 ${result.issues.length} 项 BOM 异常，请先修复，避免错误物料进入订单。`:'【要出单】参数与 BOM 均已通过校验。请在页面底部选择字段顺序并导出需求单。');
+    message('assistant',missing.length?`【要出单】还缺${missing.map(key=>fields[key]).join('、')}。请先补充${fields[missing[0]]}。`:result.issues.length?`【要出单】发现 ${result.issues.length} 项 BOM 异常，请先修复，避免错误物料进入订单。`:'【要出单】参数与 BOM 均已通过校验。请进入“BOM 校验”页，选择字段顺序并导出需求单。');
   }else{
     const entry=entries.find(entry=>entry.keys.test(text));
     if(!entry)state.offer='知识库未找到可靠答案';
@@ -100,7 +100,13 @@ $('#sample-download').onclick=()=>download('BOM示例.csv','\uFEFF'+[['型号','
 $('#import').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>1024*1024)throw Error('演示版支持 1MB 以内的 CSV');const rows=parseCsv(await file.text());if(rows.length>1000)throw Error('演示版最多支持 1000 行');state.rows=rows;delete state.bomDemo;deletedRow=null;$("#undo-row").hidden=true;render();toast(`已导入 ${rows.length} 行物料`);}catch(error){toast(error.message);}e.target.value='';};
 $('#export').onclick=()=>{try{if(modelBusy||state.proposal)throw Error('请先处理当前需求变更');download(`打样需求单_${$('#template').value}.csv`,makeOrder(state.rows,state.params,$('#template').value));toast('打样需求单已导出');}catch(error){toast(error.message);}};
 $('#reset').onclick=()=>{if(confirm('重置为示例数据？当前对话、BOM、输入草稿与本地交接单将被清除。')){cancelModel(false);const mode=$('#model-mode').value;state=fresh();state.mode=mode;retryText=null;deletedRow=null;$('#undo-row').hidden=true;$('#chat-input').value='';$('#model-error').classList.add('hidden');render();}};
-document.querySelectorAll('[data-view]').forEach(button=>button.onclick=()=>{document.querySelectorAll('.view').forEach(view=>view.classList.toggle('hidden',view.id!==button.dataset.view));document.querySelectorAll('.nav').forEach(nav=>nav.classList.toggle('active',nav===button));});
+function showView(id){
+  if(!document.getElementById(id)?.classList.contains('view'))return;
+  document.querySelectorAll('.view').forEach(view=>view.classList.toggle('hidden',view.id!==id));
+  document.querySelectorAll('.nav').forEach(nav=>{const active=nav.dataset.view===id;nav.classList.toggle('active',active);if(active)nav.setAttribute('aria-current','page');else nav.removeAttribute('aria-current');});
+  window.scrollTo?.({top:0,behavior:'instant'});
+}
+document.querySelectorAll('[data-view]').forEach(button=>button.onclick=()=>showView(button.dataset.view));
 $('#knowledge-cards').innerHTML=entries.map(entry=>`<article class="card knowledge-entry"><span class="tag">演示条目</span><h2>${escape(entry.title)}</h2><p>${escape(entry.text)}</p><small>${escape(entry.source)}</small></article>`).join('');
 // Always-visible entry and an explicit local handoff flow. No external submission.
 $('header').insertAdjacentHTML('beforeend','<button id="human-support" class="secondary support-entry" aria-keyshortcuts="Alt+Shift+H" title="快捷键 Alt + Shift + H">人工协助 <span>Alt ⇧ H</span></button>');
@@ -124,7 +130,7 @@ function refreshSupportDialog(){
   $('#support-draft-status').textContent=`草稿已保留在当前浏览器 · ${$('#support-note').value.length}/1000`;
   $('#handoff-preview').innerHTML=`<h3>当前交接内容预览</h3><dl>${Object.entries(fields).map(([key,label])=>`<div><dt>${label}</dt><dd>${escape(state.params[key]||'待补充')}</dd></div>`).join('')}</dl><p>${state.rows.length} 行 BOM · ${result.issues.length} 项异常 · ${state.messages.length} 条对话</p>${result.issues.length?'<ul>'+result.issues.map(issue=>`<li>第 ${issue.line} 行：${escape(issue.message)}</li>`).join(''):'<p>未发现规则校验异常。</p>'}`;
 }
-let supportOpener=null;
+let supportOpener=null,supportReturnToConversation=false;
 function openSupport(reason){
   if($('#support-dialog').open)return;
   cancelModel(true);
@@ -141,7 +147,7 @@ function preserveSupportDraft(){state.supportDraft={reason:$('#support-reason').
 function closeSupport(){preserveSupportDraft();$('#support-dialog').close();}
 $('#close-support').onclick=closeSupport;
 $('#support-dialog').addEventListener('cancel',e=>{e.preventDefault();closeSupport();});
-$('#support-dialog').addEventListener('close',()=>{supportOpener?.isConnected&&supportOpener.focus();});
+$('#support-dialog').addEventListener('close',()=>{const resume=supportReturnToConversation;supportReturnToConversation=false;if(resume){showView('workspace');$('#chat-input').focus();}else if(supportOpener?.isConnected)supportOpener.focus();});
 let backdropDown=false;
 function outsideDialog(e){const rect=$('#support-dialog').getBoundingClientRect();return e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom;}
 $('#support-dialog').addEventListener('pointerdown',e=>{backdropDown=e.target===$('#support-dialog')&&outsideDialog(e);});
@@ -149,7 +155,7 @@ $('#support-dialog').addEventListener('pointerup',e=>{if(backdropDown&&e.target=
 $('#support-note').oninput=()=>{preserveSupportDraft();refreshSupportDialog();};
 $('#support-reason').onchange=()=>{preserveSupportDraft();refreshSupportDialog();};
 $('#offer-dismiss').onclick=()=>{delete state.offer;state.failures=0;render();};
-$('#resume-assistant').onclick=()=>{preserveSupportDraft();if(state.ticket)state.ticket.status='closed-locally';delete state.offer;state.failures=0;$('#support-dialog').close();render();$('#chat-input').focus();toast('已继续自助，草稿与历史交接单仍保留');};
+$('#resume-assistant').onclick=()=>{preserveSupportDraft();if(state.ticket)state.ticket.status='closed-locally';delete state.offer;state.failures=0;supportReturnToConversation=true;$('#support-dialog').close();render();showView('workspace');$('#chat-input').focus();toast('已继续自助，草稿与历史交接单仍保留');};
 $('#support-form').onsubmit=e=>{e.preventDefault();if(!handoffChanged(state.ticket,state,$('#support-reason').value,$('#support-note').value))return;const id=state.ticket?.status==='local-draft'?state.ticket.id:undefined;const createdAt=state.ticket?.status==='local-draft'?state.ticket.createdAt:null;state.ticket=buildHandoff(state,$('#support-reason').value,$('#support-note').value.trim(),id);if(createdAt)state.ticket.createdAt=createdAt;state.ticket.updatedAt=new Date().toISOString();preserveSupportDraft();delete state.offer;render();refreshSupportDialog();toast('交接单已保存本机，尚未发送给客服');};
 $('#download-handoff').onclick=()=>{if(state.ticket&&!handoffChanged(state.ticket,state,$('#support-reason').value,$('#support-note').value))download(`${state.ticket.id}.json`,JSON.stringify(state.ticket,null,2),'application/json;charset=utf-8');};
 $('#messages').onclick=e=>{const button=e.target.closest('[data-feedback]');if(!button)return;const entry=state.messages[Number(button.dataset.feedback)];if(entry.feedback)return;entry.feedback=button.dataset.value;if(entry.feedback==='no')state.offer='用户反馈问题尚未解决';render();toast(entry.feedback==='yes'?'感谢反馈':'已记录，你可以补充问题或转人工');};
@@ -165,7 +171,7 @@ $('#close-support').title='关闭窗口，保留草稿（Esc）';
 $('#close-support').setAttribute('aria-label','关闭人工协助，保留草稿');
 $('.support-heading').insertAdjacentHTML('afterend','<p class="close-hint">随时点 × 或按 Esc 收起，已填写内容会保留。</p>');
 $('.dialog-actions').insertAdjacentHTML('beforebegin','<p class="close-hint">“继续自助”会结束本次本地协助状态，并返回对话输入框。</p>');
-$('.chat-card .card-heading').insertAdjacentHTML('afterend','<div class="model-toolbar"><label for="model-mode">对话模式</label><select id="model-mode"><option value="deepseek">DeepSeek 自然对话</option><option value="rules">离线规则演示</option></select><button id="refresh-model" class="text-button">检查模型配置</button></div><div id="model-config" class="model-config" role="status"></div>');
+$('.chat-card .card-heading').insertAdjacentHTML('afterend','<details class="assistant-settings"><summary>对话设置</summary><div class="model-toolbar"><label for="model-mode">对话模式</label><select id="model-mode"><option value="deepseek">DeepSeek 自然对话</option><option value="rules">离线规则演示</option></select><button id="refresh-model" class="text-button">检查模型配置</button></div><div id="model-config" class="model-config" role="status"></div></details>');
 $('#model-mode').value=state.mode||'deepseek';
 state.mode=$('#model-mode').value;
 $('#chat-input').maxLength=4000;
@@ -213,7 +219,7 @@ $('#error-support').onclick=()=>openSupport('用户反馈问题尚未解决');
 
 function loadBomExample(kind){
   if(!confirm('加载示例将替换当前 BOM（对话和参数保留），是否继续？'))return;
-  state.rows=structuredClone(kind==='merge'?mergeExample:anomalyExample);state.bomDemo=kind;deletedRow=null;$('#undo-row').hidden=true;render();$('.bom-card').scrollIntoView({behavior:'smooth',block:'start'});
+  state.rows=structuredClone(kind==='merge'?mergeExample:anomalyExample);state.bomDemo=kind;deletedRow=null;$('#undo-row').hidden=true;render();showView('bom-view');$('.bom-card').scrollIntoView({behavior:'smooth',block:'start'});
 }
 $('#load-merge').onclick=()=>loadBomExample('merge');
 $('#load-anomalies').onclick=()=>loadBomExample('anomalies');
