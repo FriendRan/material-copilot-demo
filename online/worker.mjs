@@ -44,7 +44,11 @@ export function createOnlineHandler({assets,chat=chatWithModel,now=Date.now}={})
           return new Response(request.method==='HEAD'?null:asset.content,{headers:{...ONLINE_HEADERS,'Content-Type':asset.type,'Cache-Control':'no-cache'}});
         }
         const origin=request.headers.get('origin');
-        if(origin&&origin!==url.origin||request.headers.get('sec-fetch-site')==='cross-site')return response(403,{error:'请从演示页面发起请求',code:'ORIGIN_DENIED'});
+        // Render's static-site rewrite retains the browser Origin. Allow only
+        // the explicitly configured frontend; do not enable cross-origin CORS.
+        let frontend='';
+        try{const value=new URL(env.FRONTEND_ORIGIN);if(value.protocol==='https:'&&value.origin===env.FRONTEND_ORIGIN)frontend=value.origin;}catch{}
+        if(origin&&origin!==url.origin&&origin!==frontend||request.headers.get('sec-fetch-site')==='cross-site')return response(403,{error:'请从演示页面发起请求',code:'ORIGIN_DENIED'});
         const config=modelConfig(env),ready=config.configured&&Boolean(env.DEMO_SESSION_SECRET);
         if(url.pathname==='/api/config'&&request.method==='GET'){
           const headers={};

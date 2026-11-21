@@ -2,7 +2,7 @@ import {readFile,mkdir,writeFile,copyFile,access} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=path.resolve(fileURLToPath(new URL('../',import.meta.url)));
-const allowed=['index.html','style.css','app.js','core.js','handoff.js','proposals.js','showcase.js'];
+const allowed=['index.html','style.css','app.js','core.js','handoff.js','proposals.js','showcase.js','connection.js'];
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8'};
 const assets={};
 for(const file of allowed)assets['/'+file]={content:await readFile(path.join(root,'public',file),'utf8'),type:types[path.extname(file)]};

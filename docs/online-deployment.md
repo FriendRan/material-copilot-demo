@@ -4,27 +4,33 @@
 
 ## 运行方式
 
-### 当前选择：Render 免费 Web Service
+### 当前选择：Render 免费静态前端 + 免费 Web Service
 
-正式体验地址：**[料知 Demo](https://material-copilot-demo.onrender.com/)**。
+正式体验地址：**[料知 Demo](https://material-copilot-demo-ui.onrender.com/)**。
+
+前端为 Render Static Site，仅发布八个白名单 HTML/CSS/JS 文件，不依赖后端启动便可展示。后端继续使用原免费 Node.js 服务 `https://material-copilot-demo.onrender.com`，密钥仍只存于其运行环境；静态站点没有 DeepSeek 密钥。
+
+静态站点仅将 `/api/config` 和 `/api/chat` 重写至原后端相同路径。浏览器仍请求自己的域名，HttpOnly / Secure / SameSite=Strict 会话 Cookie 不需要改成第三方 Cookie，也没有开放任意来源 CORS。后端通过 `FRONTEND_ORIGIN` 精确允许该静态站点的 Origin，继续拒绝其他来源和跨站请求。平台代理转发路径、请求体、Cookie 和响应的行为须在部署后用真实浏览器验证。
+
+页面启动只检查配置与连接状态，不调用模型。后端正在唤醒时显示约一分钟的提示，BOM 和离线演示可继续使用，草稿保留；配置请求最多七次，每次最多 15 秒、间隔 2.5 秒，不做周期保活。等待中提交的需求在连接成功后仅发送一次，停止等待则不发送；模型 POST 不自动重试。连接失败提供重新连接和离线演示入口。
 
 Render 部署状态已确认 `live`，匿名公网访问与真实 DeepSeek 对话已通过验证，项目作者也已确认手机可打开演示台。此前 Sites 地址在目标网络被拦截，Vercel 账号登录受阻，均不作为当前面试入口。
 
-当前服务由官方 Render CLI 在作者的 My Workspace 中直接创建，使用 **Free / Singapore**，没有数据库或付费实例。平台配置是当前服务的事实来源；仓库 `render.yaml` 用于在新环境复现，不要再为当前服务创建另一套 Blueprint。自动部署关闭；今后更新应用代码须先检查 GitHub 测试结果，再手动发布目标提交。README 或验收记录变更不触发无必要的服务重启。
+两个服务在作者的 My Workspace 中直接创建；后端使用 **Free / Singapore**，前端为免费 Static Site，没有数据库或付费计算实例。平台配置是当前服务的事实来源；仓库 `render.yaml` 用于在新环境复现，不要再为当前服务创建另一套 Blueprint。自动部署关闭；今后更新应用代码须先检查 GitHub 测试结果，再手动发布目标提交。README 或验收记录变更不触发无必要的服务重启。
 
 以下是从仓库复现部署的步骤：
 
-1. 在 Render 登录并授权读取 GitHub 的 `FriendRan/material-copilot-demo`，从仓库创建 Blueprint，使用根目录的 `render.yaml`。该配置只创建一个 **Free Web Service**，没有数据库或付费实例。
+1. 在 Render 登录并授权读取 GitHub 的 `FriendRan/material-copilot-demo`，从仓库创建 Blueprint，使用根目录的 `render.yaml`。该配置创建一个 **Free Web Service** 和一个 **Static Site**，没有数据库或付费计算实例。
 2. 首次创建时，在 Render 的私密输入框填写 `DEEPSEEK_API_KEY`，不要填写到 YAML、GitHub 或聊天里。`DEMO_SESSION_SECRET` 由平台自动生成；`LLM_MODEL` 默认为 `deepseek-flash`。这些变量仅在服务端使用。
 3. 构建命令为 `node scripts/build-online.mjs`，启动命令为 `node online/node-server.mjs`，Node.js 24，健康检查路径 `/healthz`。运行应用没有第三方依赖，设置 `SKIP_INSTALL_DEPS=true` 跳过托管端安装测试依赖。若手动创建服务，务必选 **Web Service / Free**，配置相同命令和运行时变量（包括自己生成的随机会话密钥）。
-4. Render 自动注入 `PORT` 和 `RENDER_EXTERNAL_URL`。新入口监听 `0.0.0.0` 并使用固定的公共 HTTPS 域名做同源校验；原本的 `server.mjs` 仍只允许本机访问，不用它启动托管服务。
+4. Render 自动注入 `PORT` 和 `RENDER_EXTERNAL_URL`。新入口监听 `0.0.0.0` 并使用固定的公共 HTTPS 域名做同源校验；原本的 `server.mjs` 仍只允许本机访问，不用它启动托管服务。静态站点构建命令为 `node scripts/build-static.mjs`，发布目录 `dist/static`；按 YAML 配置两条 API rewrite 和安全响应头，将后端 `FRONTEND_ORIGIN` 设置为实际静态站点 Origin（不含末尾斜线）。新部署的域名如有变化，应同时更新 rewrite 目标与 Origin，不能填通配符。
 5. 发布后匿名验证首页、`/api/config`、真实模型请求、BOM 修复与导出；验证 `.env` 和服务端源码不可访问、无会话或跨站请求被拒绝，确认目标网络可以打开页面，再将自己的正式链接加入 README。
 
 构建产物只包含白名单内的公开资源和应用代码，不读取本机 `.env`。HTTP 入口不暴露任意文件读取功能。`/healthz` 仅返回存活状态，不调用模型、不返回密钥。
 
-免费实例闲置 15 分钟后休眠，下一次访问约需一分钟启动；会话用量计数也会随进程重启而重置。不通过定时请求规避休眠。浏览器草稿仍在当前浏览器保存。免费托管与 DeepSeek 费用相互独立，API 调用使用模型账户额度。
+免费后端闲置 15 分钟后休眠，下一次模型连接约需一分钟启动；静态前端不随其休眠，BOM 与离线演示不依赖后端。会话用量计数随进程重启重置。不通过定时请求规避休眠。浏览器草稿按域名分别保存，从旧地址打开新地址不会自动迁移本地草稿。免费托管与 DeepSeek 费用相互独立，API 调用使用模型账户额度。
 
-官方文档：[Web Service](https://render.com/docs/web-services)、[免费方案限制](https://render.com/docs/free)、[Blueprint](https://render.com/docs/blueprint-spec)、[环境变量](https://render.com/docs/configure-environment-variables)。
+官方文档：[Static Site](https://render.com/docs/static-sites)、[重写规则](https://render.com/docs/redirects-rewrites)、[Web Service](https://render.com/docs/web-services)、[免费方案限制](https://render.com/docs/free)、[Blueprint](https://render.com/docs/blueprint-spec)、[环境变量](https://render.com/docs/configure-environment-variables)。
 
 验证记录：43 项自动测试通过，本机托管入口的 2 条真实模型请求通过；正式 Render 服务另外通过 8 条真实对话检查，覆盖四类意图、补齐缺项、确认或拒绝数量变更、不确定意图反问，以及 BOM 合并、异常定位和修复后两种模板的导出内容。公开资产与本地测试来源一致；`.env` 和服务端源码路径返回 404，无会话请求返回 401、跨站请求返回 403、非法参数返回 400。使用构造需求，报告不保存密钥或会话 Cookie。详见 [在线验收记录](acceptance/render-online.json)。页面事件检查使用 Happy DOM，不代表原生浏览器布局或操作系统下载行为已全面验证。
 

@@ -20,3 +20,39 @@ services:
         generateValue: true
       - key: LLM_MODEL
         value: deepseek-flash
+      - key: FRONTEND_ORIGIN
+        value: https://material-copilot-demo-ui.onrender.com
+  # Static sites have no compute instance and do not idle-spin down.
+  # Only API paths are proxied; the UI and BOM logic are served directly.
+  - type: web
+    name: material-copilot-demo-ui
+    runtime: static
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: node scripts/build-static.mjs
+    staticPublishPath: dist/static
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+    routes:
+      - type: rewrite
+        source: /api/config
+        destination: https://material-copilot-demo.onrender.com/api/config
+      - type: rewrite
+        source: /api/chat
+        destination: https://material-copilot-demo.onrender.com/api/chat
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self' https://chatgpt.com https://*.chatgpt.com; base-uri 'none'; form-action 'self'"

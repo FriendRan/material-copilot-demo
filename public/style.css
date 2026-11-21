@@ -68,3 +68,7 @@ dialog{border-color:#d7e1ee;border-radius:12px;box-shadow:0 12px 30px #1429431f,
 .icon-close:hover{background:#edf3fc;border-color:#b7cae6}
 @media(hover:none){.primary:hover:not(:disabled){box-shadow:inset 0 1px 0 #ffffff1f,0 1px 2px #1c448526}tbody tr:not(.invalid):hover{background:transparent}.quick-actions button:hover:not(:disabled){box-shadow:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+.backend-status{flex:none;margin:12px 24px 0;padding:10px 12px;border:1px solid #d8e3f2;border-radius:6px;background:#f1f6ff;color:#334b6d;font-size:14px;line-height:1.7}
+.backend-status .actions{gap:12px;margin-top:4px}.backend-status .text-button{font-size:14px;padding:2px 0;min-height:28px}
+.model-progress{flex-wrap:wrap;gap:8px}.model-progress>span{flex:1;min-width:160px}
+@media(max-width:780px){.chat-card:has(.backend-status:not(.hidden)){height:auto}.chat-card:has(.backend-status:not(.hidden)) .messages{flex:none;height:220px}.backend-status{margin-inline:16px}}

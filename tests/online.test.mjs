@@ -31,6 +31,20 @@ test('在线：单会话上限、过期和不完整配置均阻止额外费用�
   time+=31*60*1000;assert.equal((await app.fetch(send(cookie),env)).status,401);
   const missing=await app.fetch(new Request(root+'/api/config'),{});assert.equal((await missing.json()).configured,false);assert.equal((await app.fetch(send(cookie),{})).status,503);
 });
+
+test('在线：静态前端代理保留严格会话，仅放行明确配置的 Origin，不开放跨域',async()=>{
+  let calls=0;const app=createOnlineHandler({assets,chat:async()=>{calls++;return {reply:'ok'};}});
+  const frontend='https://material-copilot-demo-ui.onrender.com',environment={...env,FRONTEND_ORIGIN:frontend};
+  const config=await app.fetch(new Request(root+'/api/config',{headers:{origin:frontend,'sec-fetch-site':'same-origin'}}),environment);
+  assert.equal(config.status,200);assert.match(config.headers.get('set-cookie'),/HttpOnly; Secure; SameSite=Strict/);
+  assert.equal(config.headers.get('access-control-allow-origin'),null);
+  const cookie=config.headers.get('set-cookie').split(';')[0];
+  assert.equal((await app.fetch(send(cookie,payload,{origin:frontend,'sec-fetch-site':'same-origin'}),environment)).status,200);
+  for(const origin of ['https://evil.example',frontend+'.evil.example',frontend+'/path'])assert.equal((await app.fetch(send(cookie,payload,{origin}),environment)).status,403);
+  assert.equal((await app.fetch(send(cookie,payload,{origin:frontend,'sec-fetch-site':'cross-site'}),environment)).status,403);
+  assert.equal((await app.fetch(send(cookie,payload,{origin:frontend}),{...env,FRONTEND_ORIGIN:frontend+'/'})).status,403);
+  assert.equal((await app.fetch(send('',payload,{origin:frontend}),environment)).status,401);assert.equal(calls,1);
+});
 test('在线：过大请求、非法参数和内部错误不外泄，不调用模型',async()=>{
   let calls=0;const app=createOnlineHandler({assets,chat:async()=>{calls++;throw Error(env.DEEPSEEK_API_KEY);}}),cookie=await cookieFor(app);
   assert.equal((await app.fetch(send(cookie,{...payload,params:{quantity:'-1'}}),env)).status,400);assert.equal(calls,0);

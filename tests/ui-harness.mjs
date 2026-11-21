@@ -4,11 +4,12 @@ import * as core from '../public/core.js';
 import * as handoff from '../public/handoff.js';
 import * as proposals from '../public/proposals.js';
 import * as showcase from '../public/showcase.js';
+import * as connection from '../public/connection.js';
 
 export const baseParams={layers:'4层',size:'100 × 80 mm',quantity:'10',process:'沉金',delivery:'7天'};
 export async function flush(){for(let i=0;i<10;i++)await new Promise(resolve=>setImmediate(resolve));}
 export async function waitFor(check,timeout=4000){const start=Date.now();while(!check()){if(Date.now()-start>timeout)throw Error('Timed out waiting for page state');await new Promise(resolve=>setTimeout(resolve,10));}}
-export async function mount({seed={},reply,live=false}={}){
+export async function mount({seed={},reply,live=false,configFetch}={}){
   const win=new Window({url:'http://127.0.0.1:4173/'});
   const state={params:{},rows:structuredClone(core.sampleRows),messages:[{role:'assistant',text:'这次打样需要几层板？'}],mode:'rules',...seed};
   win.localStorage.setItem('material-demo-v1',JSON.stringify(state));
@@ -23,13 +24,13 @@ export async function mount({seed={},reply,live=false}={}){
   const nativeAnchorClick=win.HTMLAnchorElement.prototype.click;
   win.HTMLAnchorElement.prototype.click=function(){if(this.hasAttribute('download'))downloads.push({name:this.download,blob:blobs.get(this.href)});else nativeAnchorClick.call(this);};
   win.fetch=async(url,options)=>{
-    if(url==='/api/config')return new Response(JSON.stringify({configured:true,model:'test-model'}));
+    if(url==='/api/config')return configFetch?configFetch(options):new Response(JSON.stringify({configured:true,model:'test-model'}));
     if(url!=='/api/chat')throw Error('Unexpected fetch '+url);
     const input=JSON.parse(options.body);requests.push(input);
     if(live)return fetch('http://127.0.0.1:4173/api/chat',options);
     if(!reply)throw Error('No model fixture');return new Response(JSON.stringify(await reply(input)),{status:200});
   };
-  win.__modules={'./core.js':core,'./handoff.js':handoff,'./proposals.js':proposals,'./showcase.js':showcase};
+  win.__modules={'./core.js':core,'./handoff.js':handoff,'./proposals.js':proposals,'./showcase.js':showcase,'./connection.js':connection};
   let source=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
   source=source.replace(/^import\s*\{([^}]+)\}\s*from\s*'([^']+)';/gm,(_match,names,file)=>`const {${names}}=window.__modules['${file}'];`);
   win.eval(source);await flush();
