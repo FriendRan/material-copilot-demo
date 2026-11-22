@@ -278,7 +278,7 @@ $('#toggle-params').onclick=()=>{
   $('#parameter-toggle-text').textContent=expanded?'收起清单':'查看清单';
 };
 function updateExampleSelection(){for(const button of document.querySelectorAll('[data-example-prompt]'))button.setAttribute('aria-pressed',String($('#chat-input').value===button.dataset.examplePrompt));}
-for(const button of document.querySelectorAll('[data-example-prompt]'))button.onclick=()=>{$('#chat-input').value=button.dataset.examplePrompt;state.composer=button.dataset.examplePrompt;updateExampleSelection();save();$('#chat-input').scrollIntoView({behavior:'smooth',block:'center'});$('#chat-input').focus({preventScroll:true});};
+for(const button of document.querySelectorAll('[data-example-prompt]'))button.onclick=()=>{$('#chat-input').value=button.dataset.examplePrompt;state.composer=button.dataset.examplePrompt;updateExampleSelection();save();$('#chat-input').scrollIntoView({behavior:'auto',block:'nearest'});$('#chat-input').focus({preventScroll:true});};
 // Keep disclosure panels anchored to their controls and inside the visible area.
 $('.more-examples>div').classList.add('floating-panel','example-panel');
 const floatingDetails='.assistant-settings,.route-details,.more-examples';
