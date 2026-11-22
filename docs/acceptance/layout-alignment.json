@@ -1,0 +1,16 @@
+{
+  "checkedOn": "2026-11-23",
+  "environment": "Isolated headless Microsoft Edge with synthetic dialogue and a mocked readiness response",
+  "viewports": [[1920,1080],[1440,900],[1366,768],[1280,720],[1152,614],[960,640],[810,640]],
+  "states": ["ready","five-field-proposal","confirmed","correction-proposal","expanded-history","long-conversation"],
+  "checks": {
+    "topAndBottomAlignment": true,
+    "composerWithinColumn": true,
+    "laptopFirstScreenComposer": true,
+    "longHistoryScrollsInternally": true,
+    "noPageHorizontalOverflow": true
+  },
+  "cases": 42,
+  "maxBottomDifferenceCssPixels": 0,
+  "scope": "The compact viewports model layout constraints at larger browser zoom; this is not a claim of physical-device or cross-browser certification."
+}

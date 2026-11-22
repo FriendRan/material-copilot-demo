@@ -238,3 +238,22 @@ th{background:#f5f7fa;border-color:#e7edf2;font-weight:500}td{border-color:#edf0
 
 /* Final mobile type and touch sizing. */
 @media(max-width:600px){.intro-message .bubble{font-size:17px}.quick-actions>button,.more-examples,.assistant-settings{font-size:14px}.bom-card .card-heading .secondary,.bom-card label.upload{font-size:14px}.composer-footer .send-button{width:44px;height:44px;min-height:44px}}
+
+/* Desktop columns share one grid row. History scrolls instead of sizing the row. */
+@media(min-width:801px){
+ #workspace .work-grid{--desk-height:clamp(540px,calc(100dvh - 224px),820px);grid-auto-rows:minmax(var(--desk-height),auto)}
+ #workspace .work-grid>.chat-card{height:auto;min-height:var(--desk-height);align-self:stretch}
+ #workspace .work-grid>.chat-card .messages{contain:size;flex:1 1 0;min-height:160px;max-height:none;height:auto}
+ #workspace .params-card .next-step{margin-top:auto}
+}
+@media(min-width:1650px){#workspace .work-grid{--desk-height:clamp(620px,calc(100dvh - 228px),860px)}}
+@media(min-width:801px) and (max-height:850px){
+ #workspace .params-card>.card-heading{min-height:84px;padding:18px 20px 12px}
+ #workspace .params-card .tag{top:21px;right:20px}
+ #workspace #params{padding-top:0}
+ #workspace .param-row{min-height:48px;padding:9px 0}
+ #workspace .param-note{margin-top:14px;line-height:1.7}
+ #workspace .parameter-history{margin-top:8px}
+ #workspace .params-card .next-step{padding-top:12px;margin-bottom:16px}
+ #workspace .next-step p{margin-bottom:4px}
+}
