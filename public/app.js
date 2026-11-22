@@ -44,6 +44,8 @@ function render(){
   $('#last-update').textContent=state.updatedAt?'最近更新：'+state.updatedAt:complete?'已恢复浏览器中保存的需求':'等待填写需求';
   $('#params').innerHTML=Object.entries(fields).map(([key,label])=>`<div class="param-row"><span>${label}</span><strong class="${state.params[key]?'':'missing'}">${escape(state.params[key]||'待补充')}${key==='quantity'&&state.params[key]?' 块':''}</strong><i>${state.params[key]?'✓':'—'}</i></div>`).join('');
   const missing=Object.keys(fields).filter(key=>!state.params[key]);
+  $('#compact-progress').textContent=`${complete} / 5 项`;
+  $('#compact-next').textContent=missing.length?`下一项补充：${fields[missing[0]]}`:'五项参数已确认齐全';
   $('#missing-summary').textContent=missing.length?`还缺：${missing.map(key=>fields[key]).join('、')}。下一项补充：${fields[missing[0]]}。`:'五项参数已确认齐全，可以继续检查 BOM。';
   $('#param-changes').innerHTML=state.paramChanges?.length?'<h3>最近一次已确认变更</h3>'+state.paramChanges.map(change=>`<p>${escape(fields[change.key])}：${escape(change.before)} → <b>${escape(change.after)}</b></p>`).join(''):'<p>确认参数后，这里会展示本次变更；其他字段保持原值。</p>';
   const result=mergeBom(state.rows);
@@ -269,6 +271,13 @@ function locateBom(event){
 }
 $('#issues').onclick=locateBom;$('#merged-body').onclick=locateBom;
 // Fill examples for deliberate sending; do not spend API calls on guide clicks.
+// The compact sheet changes presentation only; progress uses confirmed parameters.
+$('#toggle-params').onclick=()=>{
+  const expanded=$('#toggle-params').getAttribute('aria-expanded')!=='true';
+  $('.params-card').dataset.expanded=String(expanded);
+  $('#toggle-params').setAttribute('aria-expanded',String(expanded));
+  $('#parameter-toggle-text').textContent=expanded?'收起清单':'查看清单';
+};
 function updateExampleSelection(){for(const button of document.querySelectorAll('[data-example-prompt]'))button.setAttribute('aria-pressed',String($('#chat-input').value===button.dataset.examplePrompt));}
 for(const button of document.querySelectorAll('[data-example-prompt]'))button.onclick=()=>{$('#chat-input').value=button.dataset.examplePrompt;state.composer=button.dataset.examplePrompt;updateExampleSelection();save();$('#chat-input').scrollIntoView({behavior:'smooth',block:'center'});$('#chat-input').focus({preventScroll:true});};
 // Keep disclosure panels anchored to their controls and inside the visible area.

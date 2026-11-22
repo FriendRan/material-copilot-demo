@@ -3,6 +3,27 @@ import assert from 'node:assert/strict';
 import {mount,baseParams,flush,waitFor} from './ui-harness.mjs';
 const answer=(overrides={})=>({reply:'请确认本次建议。',intent:'collect',updates:{},clear_fields:[],handoff:'none',handoff_reason:'',model:'test-model',...overrides});
 
+test('页面：紧凑需求清单仅展示已确认参数，展开收起不影响待确认建议或草稿',async()=>{
+  const page=await mount();try{
+    const toggle=page.$('#toggle-params');
+    assert.equal(toggle.getAttribute('aria-expanded'),'false');
+    assert.equal(page.$('#compact-progress').textContent,'0 / 5 项');
+    assert.match(page.$('#compact-next').textContent,/板层/);
+    page.submit('4层，100x80mm，10块，沉金，7天');
+    assert.equal(page.$('#compact-progress').textContent,'0 / 5 项');
+    const proposal=page.state().proposal;
+    page.$('#chat-input').value='稍后修改交期';page.$('#chat-input').dispatchEvent(new page.win.Event('input'));
+    toggle.click();assert.equal(toggle.getAttribute('aria-expanded'),'true');
+    assert.equal(page.$('.params-card').dataset.expanded,'true');
+    toggle.click();assert.equal(toggle.getAttribute('aria-expanded'),'false');
+    assert.deepEqual(page.state().proposal,proposal);assert.equal(page.$('#chat-input').value,'稍后修改交期');
+    page.$('#confirm-params').click();
+    assert.equal(page.$('#compact-progress').textContent,'5 / 5 项');
+    assert.equal(page.$('#compact-next').textContent,'五项参数已确认齐全');
+    assert.equal(toggle.getAttribute('aria-expanded'),'false');assert.equal(page.requests.length,0);
+  }finally{await page.close();}
+});
+
 test('页面：胶囊示例只填入草稿并标记选择，编辑或发送后取消选择',async()=>{
   const page=await mount();try{
     const choices=[...page.win.document.querySelectorAll('[data-example-prompt]')],before=page.state().messages.length;
