@@ -1,0 +1,45 @@
+{
+  "checkedOn": "2026-11-23",
+  "browser": "Isolated headless Microsoft Edge",
+  "regressionTests": 53,
+  "responsiveStates": 430,
+  "readabilityViewports": [
+    1440,
+    1366,
+    768,
+    390,
+    360
+  ],
+  "measuredMinimumContrast": 5.82,
+  "conversationFont": 17,
+  "parameterAndBomFont": 16,
+  "importantGuidanceMinimumFont": 14,
+  "handoffFlow": [
+    {
+      "width": 1440,
+      "height": 900,
+      "savedSnapshot": true,
+      "nativeJsonDownload": true,
+      "draftRetained": true,
+      "continueSelfService": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "savedSnapshot": true,
+      "nativeJsonDownload": true,
+      "draftRetained": true,
+      "continueSelfService": true
+    },
+    {
+      "width": 640,
+      "height": 360,
+      "savedSnapshot": true,
+      "nativeJsonDownload": true,
+      "draftRetained": true,
+      "continueSelfService": true
+    }
+  ],
+  "verified": "Reason selection, native JSON download content, dirty snapshot download guard, draft after close, update same ticket, continue-self-service focus, parameters unchanged, BOM field location and keyboard focusable scroll regions.",
+  "limits": "Synthetic data, Edge desktop and mobile viewport emulation; no physical-device, Safari or full accessibility certification."
+}

@@ -75,5 +75,6 @@
   "pageErrors": 0,
   "fixtures": "Synthetic parameters and 24-row BOM with long values and duplicate references; mocked readiness; no external model calls in the layout matrix",
   "scope": "Edge desktop page zoom and mobile viewport emulation. This does not certify physical devices, Safari or all browsers.",
-  "refinement": "Graphite body text; welcome nearer composer; neutral borders and 16/12px surfaces; compact expandable confirmed sheet at <=800 CSS px. Confirmed state and business rules unchanged."
+  "refinement": "Graphite body text; welcome nearer composer; neutral borders and 16/12px surfaces; compact expandable confirmed sheet at <=800 CSS px. Confirmed state and business rules unchanged.",
+  "detailPass": "Typography hierarchy, fixed original-BOM columns, precise field anomalies, keyboard scroll regions, two-column local handoff review above 680px and single column below. All 430 states passed again."
 }
