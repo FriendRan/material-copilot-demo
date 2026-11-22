@@ -5,7 +5,9 @@ import {connectBackend,waitForConnection} from './connection.js';
 import {intentLabels,routeActions,mergeExample,anomalyExample,repairedAnomaly} from './showcase.js';
 const $=selector=>document.querySelector(selector);
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const welcome={role:'assistant',text:'你好，我是料知。把打样需求告诉我，我会帮你补齐参数，并在出单前核对 BOM。\n这次打样需要几层板？'};
+const welcome={role:'assistant',text:'板层、尺寸、数量，确定多少就先说多少。\n剩下的参数我会接着问，确认后再整理进需求单。'};
+const actionIcon=name=>'<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({headset:'<path d="M4 13v-1a8 8 0 0 1 16 0v1M6 12H4v7h3v-7ZM18 12h2v7h-3v-7ZM17 19c0 2-2 2-5 2"/>',chip:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 3v3m6-3v3M9 18v3m6-3v3M3 9h3m-3 6h3m12-6h3m-3 6h3M10 10h4v4h-4z"/>'}[name]||'')+'</svg>';
+const boardArtwork='<svg class="board-art" viewBox="0 0 148 124" fill="none" aria-hidden="true"><path d="m14 78 60 33 60-33-60-33-60 33Z" fill="#edf2f7" stroke="#b6c7d7"/><path d="m14 67 60 33 60-33-60-33-60 33Z" fill="#f6f9fc" stroke="#a0b6cc"/><path d="m14 54 60 33 60-33-60-33-60 33Z" fill="#e4eef7" stroke="#7c9bb7" stroke-width="1.5"/><path d="m47 52 27-15 27 15-27 15-27-15Z" fill="#345f82"/><path d="m55 52 19-10 19 10-19 10-19-10Z" fill="#547d9b"/><g stroke="#6b8faa" stroke-width="1.5" stroke-linecap="round"><path d="m48 43 8 4m-16 1 8 4m-7 5 8 4m44-18-8 4m16 1-8 4m7 5-8 4M61 66v8m13-6v10m13-12v8M37 65l-8 5m82-5 8 5M60 30l-9-5m37 5 9-5"/></g><g fill="#fff" stroke="#91abc1"><ellipse cx="29" cy="54" rx="4" ry="2.4"/><ellipse cx="119" cy="54" rx="4" ry="2.4"/><ellipse cx="74" cy="29" rx="4" ry="2.4"/><ellipse cx="74" cy="79" rx="4" ry="2.4"/></g></svg>';
 const fresh=()=>({params:{},rows:structuredClone(sampleRows),messages:[welcome]});
 let state=fresh();
 let modelInfo={configured:false,loading:true},modelBusy=false,modelController=null,requestSequence=0,retryText=null;
@@ -28,7 +30,10 @@ function renderRouting(){
   $('#routing').innerHTML='<div class="route-label">'+(modelBusy?'正在判断意图…':route?'当前分流：<b>'+escape(route.label)+'</b>':'等待输入需求')+'</div><details class="route-details"><summary>分流说明</summary><div class="route-options">'+['问参数','报参数','问替代料','要出单'].map(label=>`<span class="${route?.label===label?'selected':''}">${label}</span>`).join('')+'</div><p>'+escape(route?routeActions[route.label]||'确认需求后继续处理':'意图不明确时先反问确认，不直接进入后续流程。')+'</p>'+(route?'<small>判断来源：'+escape(route.source)+'</small>':'')+'</details>';
 }
 function renderMessages(){
-  $('#messages').innerHTML=state.messages.map((m,index)=>`<div class="message ${m.role==='user'?'user':'assistant'}"><div class="avatar">${m.role==='user'?'你':'料'}</div><div class="bubble">${escape(m.text).replaceAll('\n','<br>')}<div class="message-meta">${m.role==='user'?'你':escape(m.source||'料知 · 自动助手')}${m.time?' · '+escape(m.time):''}</div>${m.role==='assistant'&&index>0?`<div class="feedback"><button data-feedback="${index}" data-value="yes" ${m.feedback?'disabled':''}>${m.feedback==='yes'?'✓ 已帮助到我':'有帮助'}</button><button data-feedback="${index}" data-value="no" ${m.feedback?'disabled':''}>${m.feedback==='no'?'已记录未解决':'未解决'}</button></div>`:''}</div></div>`).join('');
+  $('#messages').innerHTML=state.messages.map((m,index)=>{
+    const opening=index===0&&state.messages.length===1&&m.role==='assistant';
+    return `<div class="message ${m.role==='user'?'user':'assistant'}${opening?' intro-message':''}">${opening?boardArtwork:`<div class="avatar">${m.role==='user'?'你':actionIcon('chip')}</div>`}<div class="bubble">${opening?'<h3>先说说，这次要做什么板？</h3>':''}${escape(m.text).replaceAll('\n','<br>')}<div class="message-meta">${m.role==='user'?'你':escape(m.source||'料知 · 自动助手')}${m.time?' · '+escape(m.time):''}</div>${m.role==='assistant'&&index>0?`<div class="feedback"><button data-feedback="${index}" data-value="yes" ${m.feedback?'disabled':''}>${m.feedback==='yes'?'✓ 已帮助到我':'有帮助'}</button><button data-feedback="${index}" data-value="no" ${m.feedback?'disabled':''}>${m.feedback==='no'?'已记录未解决':'未解决'}</button></div>`:''}</div></div>`;
+  }).join('');
   if(state.pending){const wrap=document.createElement('div');wrap.className='clarification';['问参数','报参数','问替代料','要出单'].forEach(label=>{const button=document.createElement('button');button.textContent=label;button.onclick=()=>{const pending=state.pending,engine=state.pendingEngine;delete state.pending;delete state.pendingEngine;if(engine==='deepseek'){send(`我确认刚才的意图是“${label}”，原话是：${pending}`);}else{message('user',label);respond(pending,label==='问替代料'?'查替料':label);}};wrap.append(button);});$('#messages').append(wrap);}
   $('#messages').scrollTop=$('#messages').scrollHeight;
 }
@@ -119,7 +124,7 @@ function renderSupport(){
   const active=state.ticket?.status==='local-draft';
   $('#support-offer').classList.toggle('hidden',!state.offer||active);
   $('#offer-reason').textContent=(state.offer||'')+'。已填参数和对话会随交接单保留。';
-  $('#human-support').innerHTML=active?'查看人工协助 <span>交接单已保存</span>':'人工协助 <span>Alt ⇧ H</span>';
+  $('#human-support').innerHTML=actionIcon('headset')+(active?'查看人工协助 <span>交接单已保存</span>':'人工协助 <span>Alt ⇧ H</span>');
   $('#assistant-status').textContent=active?'自助可继续 · 交接单已保存':modelBusy?'DeepSeek 正在思考':$('#model-mode').value==='rules'?'离线规则模式':modelInfo.loading?'对话服务连接中':modelInfo.configured?'DeepSeek · 自然对话':'对话服务暂未连接';
 }
 function refreshSupportDialog(){
