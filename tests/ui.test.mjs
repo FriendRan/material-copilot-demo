@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import {mount,baseParams,flush,waitFor} from './ui-harness.mjs';
 const answer=(overrides={})=>({reply:'请确认本次建议。',intent:'collect',updates:{},clear_fields:[],handoff:'none',handoff_reason:'',model:'test-model',...overrides});
 
+test('页面：胶囊示例只填入草稿并标记选择，编辑或发送后取消选择',async()=>{
+  const page=await mount();try{
+    const choices=[...page.win.document.querySelectorAll('[data-example-prompt]')],before=page.state().messages.length;
+    choices[0].click();assert.equal(page.$('#chat-input').value,choices[0].dataset.examplePrompt);assert.equal(choices[0].getAttribute('aria-pressed'),'true');assert.equal(page.state().messages.length,before);assert.equal(page.requests.length,0);
+    page.$('#chat-input').value+='，沉金';page.$('#chat-input').dispatchEvent(new page.win.Event('input'));assert.equal(choices[0].getAttribute('aria-pressed'),'false');
+    choices[1].click();assert.equal(choices[1].getAttribute('aria-pressed'),'true');assert.equal(choices[0].getAttribute('aria-pressed'),'false');
+    page.submit(choices[1].dataset.examplePrompt);assert.equal(choices[1].getAttribute('aria-pressed'),'false');
+  }finally{await page.close();}
+});
+
 test('页面：对话与 BOM 分页切换保留待确认变更、输入草稿及当前参数',async()=>{
   const page=await mount({seed:{params:baseParams}});try{
     assert.equal(page.$('#bom-view').classList.contains('hidden'),true);
@@ -70,7 +80,7 @@ test('页面：同键合并预览、不同封装独立、原始行链接能正�
     page.$('#load-merge').click();assert.equal(page.$('#bom-body').children.length,4);assert.equal(page.$('#merged-body').children.length,3);
     const first=page.$('#merged-body tr');assert.match(first.textContent,/DEMO-RES-10K/);assert.match(first.textContent,/R1, R2, R3/);assert.equal(first.children[2].textContent,'3');
     assert.equal(page.$('#merged-body').children[1].children[1].textContent,'0805');
-    page.$('#merged-body [data-locate="2"]').click();assert.equal(page.win.document.activeElement.getAttribute('aria-label'),'第 2 行型号');assert.equal(page.$('#bom-row-2').__scrolled,true);
+    page.$('#merged-body [data-locate="2"]').click();assert.equal(page.win.document.activeElement.getAttribute('aria-label'),'第 2 行型号');assert.equal(page.$('#bom-row-2 [data-key="model"]').__scrolled,true);
     assert.match(page.$('#conservation').textContent,/数量：6 \/ 6/);assert.match(page.$('#conservation').textContent,/位号条目：6 \/ 6/);
   }finally{await page.close();}
 });

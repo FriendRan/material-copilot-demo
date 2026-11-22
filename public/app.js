@@ -27,7 +27,7 @@ function recordParams(before,after){
 }
 function renderRouting(){
   const route=state.route;
-  $('#routing').innerHTML='<div class="route-label">'+(modelBusy?'正在判断意图…':route?'当前分流：<b>'+escape(route.label)+'</b>':'等待输入需求')+'</div><details class="route-details"><summary>分流说明</summary><div class="route-options">'+['问参数','报参数','问替代料','要出单'].map(label=>`<span class="${route?.label===label?'selected':''}">${label}</span>`).join('')+'</div><p>'+escape(route?routeActions[route.label]||'确认需求后继续处理':'意图不明确时先反问确认，不直接进入后续流程。')+'</p>'+(route?'<small>判断来源：'+escape(route.source)+'</small>':'')+'</details>';
+  $('#routing').innerHTML='<div class="route-label">'+(modelBusy?'正在判断意图…':route?'当前分流：<b>'+escape(route.label)+'</b>':'等待输入需求')+'</div><details class="route-details"><summary>分流说明</summary><div class="floating-panel route-panel"><div class="route-options">'+['问参数','报参数','问替代料','要出单'].map(label=>`<span class="${route?.label===label?'selected':''}">${label}</span>`).join('')+'</div><p>'+escape(route?routeActions[route.label]||'确认需求后继续处理':'意图不明确时先反问确认，不直接进入后续流程。')+'</p>'+(route?'<small>判断来源：'+escape(route.source)+'</small>':'')+'</div></details>';
 }
 function renderMessages(){
   $('#messages').innerHTML=state.messages.map((m,index)=>{
@@ -57,7 +57,7 @@ function render(){
   $('#bom-caption').textContent=state.bomDemo==='merge'?'构造示例：第 1、2 行同型号同封装合并；第 3 行封装不同，独立保留。':state.bomDemo==='anomalies'?'构造示例：重复位号、型号封装不匹配、数量缺失。可手动修改或应用示例修复。':'仅展示已配置规则，不代表真实规格书认证。';
   $('#export').disabled=complete<5||result.issues.length>0||modelBusy||Boolean(state.proposal);
   $('#export-status').textContent=modelBusy?'正在理解本次需求，请等待完成后再出单。':state.proposal?'有待确认的参数变更，请确认或选择暂不修改后再出单。':complete<5?`还缺 ${5-complete} 项打样参数，请先在对话中补齐。`:result.issues.length?`打样参数已齐全，尚有 ${result.issues.length} 项 BOM 异常待处理。`:`需求已就绪：${state.params.quantity} 块板，${result.merged.length} 类物料，共 ${result.inputTotal*Number(state.params.quantity)} 个元件。`;
-  renderMessages();renderSupport();renderModel();renderRouting();save();
+  renderMessages();renderSupport();renderModel();renderRouting();updateExampleSelection();positionOpenPanels();save();
 }
 function respond(text,forced){
   const intent=forced||classify(text);
@@ -90,7 +90,7 @@ function respond(text,forced){
 }
 async function send(text){text=text.trim();if(!text||modelBusy)return;const escalation=handoffReason(text);if(state.proposal&&!escalation?.direct){toast('请先确认本次变更，或选择“暂不修改”；输入内容已保留。');return;}delete state.pending;delete state.pendingEngine;retryText=null;message('user',text);if(escalation?.direct){recordRoute('handoff','用户主动要求');state.offer=escalation.reason;message('assistant','已打开人工协助面板，当前对话和需求会一起整理。此处仍是本地交接流程，尚未连接真人客服。');render();openSupport();return;}if($('#model-mode').value==='rules'){respond(text);return;}await requestModel(text);}
 $('#chat-input').value=state.composer||'';
-$('#chat-input').oninput=()=>{state.composer=$('#chat-input').value;save();};
+$('#chat-input').oninput=()=>{state.composer=$('#chat-input').value;updateExampleSelection();save();};
 $('#chat-form').onsubmit=e=>{e.preventDefault();if(modelBusy)return;const text=$('#chat-input').value;if(state.proposal&&!handoffReason(text)?.direct){toast('请先确认本次变更，或选择“暂不修改”；输入内容已保留。');return;}$('#chat-input').value='';state.composer='';send(text);save();};
 $('#chat-input').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('#chat-form').requestSubmit();}};
 document.querySelectorAll('[data-prompt]').forEach(button=>button.onclick=()=>send(button.dataset.prompt));
@@ -178,7 +178,7 @@ $('#close-support').title='关闭窗口，保留草稿（Esc）';
 $('#close-support').setAttribute('aria-label','关闭人工协助，保留草稿');
 $('.support-heading').insertAdjacentHTML('afterend','<p class="close-hint">随时点 × 或按 Esc 收起，已填写内容会保留。</p>');
 $('.dialog-actions').insertAdjacentHTML('beforebegin','<p class="close-hint">“继续自助”会结束本次本地协助状态，并返回对话输入框。</p>');
-$('.chat-card .card-heading').insertAdjacentHTML('afterend','<details class="assistant-settings"><summary>对话设置</summary><div class="model-toolbar"><label for="model-mode">对话模式</label><select id="model-mode"><option value="deepseek">DeepSeek 自然对话</option><option value="rules">离线规则演示</option></select><button id="refresh-model" class="text-button">检查模型配置</button></div><div id="model-config" class="model-config" role="status"></div></details>');
+$('.chat-card .card-heading').insertAdjacentHTML('afterend','<details class="assistant-settings"><summary>对话设置</summary><div class="floating-panel settings-panel"><div class="model-toolbar"><label for="model-mode">对话模式</label><select id="model-mode"><option value="deepseek">DeepSeek 自然对话</option><option value="rules">离线规则演示</option></select><button id="refresh-model" class="text-button">检查模型配置</button></div><div id="model-config" class="model-config" role="status"></div></div></details>');
 $('#model-mode').value=state.mode||'deepseek';
 state.mode=$('#model-mode').value;
 $('#chat-input').maxLength=4000;
@@ -262,11 +262,45 @@ $('#scope-link').onclick=()=>document.querySelector('[data-view="about"]').click
 function locateBom(event){
   const button=event.target.closest('[data-locate]');if(!button)return;
   const row=$('#bom-row-'+button.dataset.locate);if(!row){toast('请先添加物料');return;}
-  row.scrollIntoView({behavior:'smooth',block:'center'});
-  row.querySelector('[data-key="'+button.dataset.field+'"]').focus({preventScroll:true});
+  const field=row.querySelector('[data-key="'+button.dataset.field+'"]');
+  const rect=field.getBoundingClientRect(),distant=rect.bottom < -innerHeight||rect.top > innerHeight*2;
+  field.scrollIntoView({behavior:distant||matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center',inline:'center'});
+  field.focus({preventScroll:true});
 }
 $('#issues').onclick=locateBom;$('#merged-body').onclick=locateBom;
 // Fill examples for deliberate sending; do not spend API calls on guide clicks.
-for(const button of document.querySelectorAll('[data-example-prompt]'))button.onclick=()=>{$('#chat-input').value=button.dataset.examplePrompt;state.composer=button.dataset.examplePrompt;save();$('#chat-input').scrollIntoView({behavior:'smooth',block:'center'});$('#chat-input').focus({preventScroll:true});};
+function updateExampleSelection(){for(const button of document.querySelectorAll('[data-example-prompt]'))button.setAttribute('aria-pressed',String($('#chat-input').value===button.dataset.examplePrompt));}
+for(const button of document.querySelectorAll('[data-example-prompt]'))button.onclick=()=>{$('#chat-input').value=button.dataset.examplePrompt;state.composer=button.dataset.examplePrompt;updateExampleSelection();save();$('#chat-input').scrollIntoView({behavior:'smooth',block:'center'});$('#chat-input').focus({preventScroll:true});};
+// Keep disclosure panels anchored to their controls and inside the visible area.
+$('.more-examples>div').classList.add('floating-panel','example-panel');
+const floatingDetails='.assistant-settings,.route-details,.more-examples';
+function positionOpenPanels(){
+  for(const details of document.querySelectorAll(floatingDetails)){
+    if(!details.open)continue;
+    const panel=details.querySelector('.floating-panel'),summary=details.querySelector('summary');if(!panel||!summary)continue;
+    const anchor=summary.getBoundingClientRect(),visual=window.visualViewport;
+    const leftBound=(visual?.offsetLeft||0)+12,rightBound=Math.min(innerWidth,(visual?.offsetLeft||0)+(visual?.width||innerWidth))-12;
+    const topBound=Math.max(document.querySelector('header').getBoundingClientRect().bottom,visual?.offsetTop||0)+8;
+    const bottomBound=Math.min(innerHeight,(visual?.offsetTop||0)+(visual?.height||innerHeight))-8;
+    if(anchor.bottom<topBound||anchor.top>bottomBound){details.open=false;continue;}
+    panel.style.maxWidth=Math.max(0,rightBound-leftBound)+'px';panel.style.maxHeight=Math.max(0,bottomBound-topBound)+'px';
+    const below=bottomBound-anchor.bottom-8,above=anchor.top-topBound-8,natural=panel.scrollHeight;
+    const useBelow=below>=natural||below>=above;
+    panel.style.maxHeight=Math.max(0,useBelow?below:above)+'px';
+    const box=panel.getBoundingClientRect(),top=useBelow?anchor.bottom+8:anchor.top-box.height-8;
+    panel.style.left=Math.max(leftBound,Math.min(anchor.right-box.width,rightBound-box.width))+'px';
+    panel.style.top=Math.max(topBound,Math.min(top,bottomBound-box.height))+'px';
+  }
+}
+document.addEventListener('toggle',event=>{
+  const details=event.target;if(!details.matches?.(floatingDetails)||!details.open)return;
+  for(const other of document.querySelectorAll(floatingDetails))if(other!==details)other.open=false;
+  positionOpenPanels();
+},true);
+document.addEventListener('pointerdown',event=>{for(const details of document.querySelectorAll(floatingDetails))if(details.open&&!details.contains(event.target))details.open=false;});
+document.addEventListener('keydown',event=>{if(event.key==='Escape')for(const details of document.querySelectorAll(floatingDetails))details.open=false;});
+window.addEventListener('resize',positionOpenPanels);
+window.addEventListener('scroll',positionOpenPanels,true);
+window.visualViewport?.addEventListener('resize',positionOpenPanels);
 render();
 refreshModel();

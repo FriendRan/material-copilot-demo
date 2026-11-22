@@ -1,0 +1,77 @@
+{
+  "checkedOn": "2026-11-23",
+  "browser": "Isolated headless Microsoft Edge",
+  "zoomMethod": "Native page zoom in task-owned profiles, verified by devicePixelRatio; no personal browser data accessed",
+  "nativeZoomFactors": [
+    0.75,
+    0.9,
+    1,
+    1.1,
+    1.25,
+    1.5,
+    1.75,
+    2
+  ],
+  "windowSizes": [
+    [
+      1920,
+      1080
+    ],
+    [
+      1440,
+      900
+    ],
+    [
+      1366,
+      768
+    ],
+    [
+      1024,
+      768
+    ]
+  ],
+  "mobileViewports": [
+    [
+      320,
+      568
+    ],
+    [
+      360,
+      640
+    ],
+    [
+      390,
+      844
+    ],
+    [
+      768,
+      1024
+    ],
+    [
+      844,
+      390
+    ],
+    [
+      640,
+      360
+    ]
+  ],
+  "states": [
+    "ready",
+    "settings",
+    "routing",
+    "examples",
+    "long-proposal",
+    "long-confirmed",
+    "handoff",
+    "handoff-saved",
+    "bom-long",
+    "bom-location",
+    "handoff-many-issues"
+  ],
+  "checks": 418,
+  "observedIssues": 0,
+  "pageErrors": 0,
+  "fixtures": "Synthetic parameters and 24-row BOM with long values and duplicate references; mocked readiness; no external model calls in the layout matrix",
+  "scope": "Edge desktop page zoom and mobile viewport emulation. This does not certify physical devices, Safari or all browsers."
+}

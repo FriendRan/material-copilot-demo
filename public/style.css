@@ -257,3 +257,38 @@ th{background:#f5f7fa;border-color:#e7edf2;font-weight:500}td{border-color:#edf0
  #workspace .params-card .next-step{padding-top:12px;margin-bottom:16px}
  #workspace .next-step p{margin-bottom:4px}
 }
+
+/* Native hidden state must win over the shared button display styles. */
+[hidden]{display:none!important}
+.parameter-proposal,.model-error,.handoff-preview,.support-disclaimer,#support-ticket-status,.snapshot-note{overflow-wrap:anywhere}
+.handoff-preview dl{grid-template-columns:repeat(2,minmax(0,1fr))}.handoff-preview dl>div{min-width:0}
+.handoff-preview dd{min-width:0}.handoff-preview li{overflow-wrap:anywhere}
+.floating-panel{position:fixed;z-index:40;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;background:#fff;border:1px solid #c9d7e5;border-radius:8px;padding:14px 16px;box-shadow:0 10px 36px #18364f1c;color:var(--muted)}
+.settings-panel{width:330px}.route-panel{width:310px}.example-panel{width:180px}
+.assistant-settings[open]{width:auto;top:27px;right:30px;padding:0;border:0;background:transparent;border-radius:0;box-shadow:none}
+.assistant-settings[open]>summary{margin:0;font-weight:400;padding:4px 0}
+.route-details[open]{position:relative;inset:auto;width:auto;padding:0;border:0;background:transparent;box-shadow:none;border-radius:0;z-index:15}
+.route-details[open]>summary{margin:0;font-weight:400;padding:4px 0}
+.assistant-settings:not([open])>.floating-panel,.route-details:not([open])>.floating-panel,.more-examples:not([open])>.floating-panel{display:none}
+.more-examples>.floating-panel{position:fixed;inset:auto;width:180px;display:grid;max-width:calc(100vw - 24px);gap:2px;padding:7px;z-index:40}
+.floating-panel .model-toolbar{margin:0}.floating-panel .route-options{margin:0}
+@media(max-width:600px){.assistant-settings[open]{top:23px;right:20px}.handoff-preview dl{grid-template-columns:minmax(0,1fr)}}
+@media(max-height:600px){.dialog-actions{position:static}.support-heading{padding-top:14px;padding-bottom:12px}}
+
+/* Requested example chips share a quiet capsule shape and a clear selection. */
+.intro-message h3{font-weight:700}
+.quick-actions{gap:8px;padding-bottom:14px}
+.quick-actions>button,.more-examples>summary{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:7px 13px;border:1px solid #dde3e9;border-radius:999px;background:#f6f7f9;color:#304b65;font-size:14px;line-height:1.4}
+.quick-actions>button:hover:not(:disabled),.more-examples>summary:hover{background:#edf2f8;border-color:#bacbde;color:var(--blue);text-decoration:none}
+.quick-actions>button[aria-pressed="true"],.more-examples[open]>summary{background:#eaf1fb;border-color:#9bb7d9;color:#204f8d}
+.more-examples>summary:after{padding-left:0}.quick-label{margin-right:5px}
+@media(max-width:600px){.quick-actions{gap:6px;padding-inline:16px}.quick-actions>button,.more-examples>summary{min-height:38px;padding:7px 8px;gap:5px}.intro-message h3{font-weight:700}}
+
+/* A saved handoff has a longer label; tablet headers need their own nav row. */
+@media(min-width:601px) and (max-width:800px){
+ html{scroll-padding-top:124px}
+ .app-header{height:112px;display:grid;grid-template-columns:1fr auto auto;padding:12px 24px 0;column-gap:16px;row-gap:10px}
+ .app-header nav{grid-row:2;grid-column:1/-1;width:100%;height:40px;margin:0;gap:0}
+ .nav{flex:1;padding:0 8px}.header-tools{grid-column:2;margin:0}
+ .app-header>.support-entry{grid-column:3;grid-row:1}.support-entry span{display:none}
+}
