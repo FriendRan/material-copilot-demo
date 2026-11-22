@@ -35,6 +35,7 @@ function renderMessages(){
 function render(){
   const complete=Object.keys(fields).filter(key=>state.params[key]).length;
   $('#progress').textContent=`${complete} / 5 已填`;
+  $('#parameter-progress').value=complete;
   $('#last-update').textContent=state.updatedAt?'最近更新：'+state.updatedAt:complete?'已恢复浏览器中保存的需求':'等待填写需求';
   $('#params').innerHTML=Object.entries(fields).map(([key,label])=>`<div class="param-row"><span>${label}</span><strong class="${state.params[key]?'':'missing'}">${escape(state.params[key]||'待补充')}${key==='quantity'&&state.params[key]?' 块':''}</strong><i>${state.params[key]?'✓':'—'}</i></div>`).join('');
   const missing=Object.keys(fields).filter(key=>!state.params[key]);
@@ -119,7 +120,7 @@ function renderSupport(){
   $('#support-offer').classList.toggle('hidden',!state.offer||active);
   $('#offer-reason').textContent=(state.offer||'')+'。已填参数和对话会随交接单保留。';
   $('#human-support').innerHTML=active?'查看人工协助 <span>交接单已保存</span>':'人工协助 <span>Alt ⇧ H</span>';
-  $('#assistant-status').textContent=active?'自助可继续 · 交接单已保存':modelBusy?'DeepSeek 正在思考':$('#model-mode').value==='rules'?'离线规则模式':modelInfo.configured?'DeepSeek · 自然对话':'DeepSeek · 待配置';
+  $('#assistant-status').textContent=active?'自助可继续 · 交接单已保存':modelBusy?'DeepSeek 正在思考':$('#model-mode').value==='rules'?'离线规则模式':modelInfo.loading?'对话服务连接中':modelInfo.configured?'DeepSeek · 自然对话':'对话服务暂未连接';
 }
 function refreshSupportDialog(){
   const result=mergeBom(state.rows),active=state.ticket?.status==='local-draft';
