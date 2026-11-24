@@ -618,7 +618,7 @@ body.app-shell{min-width:0;min-height:100dvh;padding-top:var(--topbar-height);pa
 }
 
 /* Chat-first introduction shared by desktop and mobile. */
-.mobile-chat-tools,.mobile-sheet-close{display:none}
+.mobile-chat-tools,.mobile-sheet-close,.mobile-message-fade{display:none}
 .app-shell .intro-message h3{font-size:36px;margin-bottom:18px}
 .app-shell #workspace.is-opening .routing{display:none}
 .app-shell .quick-label{font-size:14px}
@@ -668,6 +668,8 @@ body.app-shell{min-width:0;min-height:100dvh;padding-top:var(--topbar-height);pa
  .app-shell #workspace:not(.is-opening) .quick-label{display:none}
  .app-shell #workspace:not(.is-opening) .quick-actions>button,.app-shell #workspace:not(.is-opening) .more-examples>summary{font-size:14px;min-height:36px;padding:4px 10px}
  .app-shell .message{gap:10px;line-height:1.8;font-size:17px;margin-bottom:22px}
+ .app-shell #workspace:not(.is-opening) .mobile-message-fade{display:block;position:relative;flex:0 0 0;height:0;width:100%;z-index:3;pointer-events:none}
+ .app-shell .mobile-message-fade::before{content:'';position:absolute;inset:auto 0 0;height:22px;background:linear-gradient(to bottom,#ffffff00,#ffffffbf 70%,#fff);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 80%);mask-image:linear-gradient(to bottom,transparent,#000 80%)}
  .app-shell .assistant .avatar{width:28px;height:28px;flex-basis:28px;border:1px solid #dbe5ed;border-radius:9px;background:#eef3f8;color:#315b80}
  .app-shell .assistant .bubble{max-width:calc(100% - 38px);padding:0 0 0 1px;background:transparent;color:#202b36}
  .app-shell .assistant.intro-message .bubble{max-width:none;padding:0;color:#526170}

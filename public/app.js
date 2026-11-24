@@ -375,6 +375,7 @@ window.visualViewport?.addEventListener('resize',positionOpenPanels);
 function mountMobileLayout(){
   const mobile=matchMedia('(max-width:600px)'),panel=$('.params-card'),grid=$('.work-grid');
   const toggle=$('#toggle-params'),settings=$('.assistant-settings'),headerTools=$('.header-tools');
+  const fade=document.createElement('div');fade.className='mobile-message-fade';fade.setAttribute('aria-hidden','true');$('#messages').after(fade);
   const tools=document.createElement('div');tools.className='mobile-chat-tools';
   tools.innerHTML='<span class="mobile-confirm-note">确认后更新</span>';
   $('#chat-form').before(tools);
