@@ -30,6 +30,7 @@ function renderRouting(){
   $('#routing').innerHTML='<div class="route-label">'+(modelBusy?'正在判断意图…':route?'当前分流：<b>'+escape(route.label)+'</b>':'等待输入需求')+'</div><details class="route-details"><summary>分流说明</summary><div class="floating-panel route-panel"><div class="route-options">'+['问参数','报参数','问替代料','要出单'].map(label=>`<span class="${route?.label===label?'selected':''}">${label}</span>`).join('')+'</div><p>'+escape(route?routeActions[route.label]||'确认需求后继续处理':'意图不明确时先反问确认，不直接进入后续流程。')+'</p>'+(route?'<small>判断来源：'+escape(route.source)+'</small>':'')+'</div></details>';
 }
 function renderMessages(){
+  $('#workspace').classList.toggle('is-opening',state.messages.length===1&&state.messages[0]?.role==='assistant');
   $('#messages').innerHTML=state.messages.map((m,index)=>{
     const opening=index===0&&state.messages.length===1&&m.role==='assistant';
     return `<div class="message ${m.role==='user'?'user':'assistant'}${opening?' intro-message':''}">${opening?boardArtwork:`<div class="avatar">${m.role==='user'?'你':actionIcon('chip')}</div>`}<div class="bubble">${opening?'<h3>先说说，这次要做什么板？</h3>':''}${escape(m.text).replaceAll('\n','<br>')}<div class="message-meta">${m.role==='user'?'你':escape(m.source||'料知 · 自动助手')}${m.time?' · '+escape(m.time):''}</div>${m.role==='assistant'&&index>0?`<div class="feedback"><button data-feedback="${index}" data-value="yes" ${m.feedback?'disabled':''}>${m.feedback==='yes'?'✓ 已帮助到我':'有帮助'}</button><button data-feedback="${index}" data-value="no" ${m.feedback?'disabled':''}>${m.feedback==='no'?'已记录未解决':'未解决'}</button></div>`:''}</div></div>`;
@@ -59,7 +60,7 @@ function render(){
   $('#bom-caption').textContent=state.bomDemo==='merge'?'构造示例：第 1、2 行同型号同封装合并；第 3 行封装不同，独立保留。':state.bomDemo==='anomalies'?'构造示例：重复位号、型号封装不匹配、数量缺失。可手动修改或应用示例修复。':'仅展示已配置规则，不代表真实规格书认证。';
   $('#export').disabled=complete<5||result.issues.length>0||modelBusy||Boolean(state.proposal);
   $('#export-status').textContent=modelBusy?'正在理解本次需求，请等待完成后再出单。':state.proposal?'有待确认的参数变更，请确认或选择暂不修改后再出单。':complete<5?`还缺 ${5-complete} 项打样参数，请先在对话中补齐。`:result.issues.length?`打样参数已齐全，尚有 ${result.issues.length} 项 BOM 异常待处理。`:`需求已就绪：${state.params.quantity} 块板，${result.merged.length} 类物料，共 ${result.inputTotal*Number(state.params.quantity)} 个元件。`;
-  renderMessages();renderSupport();renderModel();renderRouting();updateExampleSelection();positionOpenPanels();save();
+  renderMessages();renderSupport();renderModel();renderRouting();syncShell();updateExampleSelection();positionOpenPanels();save();
 }
 function respond(text,forced){
   const intent=forced||classify(text);
@@ -108,17 +109,18 @@ function download(name,content,type='text/csv;charset=utf-8'){const url=URL.crea
 $('#sample-download').onclick=()=>download('BOM示例.csv','\uFEFF'+[['型号','封装','数量','位号'],...sampleRows.map(row=>[row.model,row.package,row.quantity,row.refs])].map(row=>row.map(csvCell).join(',')).join('\r\n'));
 $('#import').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>1024*1024)throw Error('演示版支持 1MB 以内的 CSV');const rows=parseCsv(await file.text());if(rows.length>1000)throw Error('演示版最多支持 1000 行');state.rows=rows;delete state.bomDemo;deletedRow=null;$("#undo-row").hidden=true;render();toast(`已导入 ${rows.length} 行物料`);}catch(error){toast(error.message);}e.target.value='';};
 $('#export').onclick=()=>{try{if(modelBusy||state.proposal)throw Error('请先处理当前需求变更');download(`打样需求单_${$('#template').value}.csv`,makeOrder(state.rows,state.params,$('#template').value));toast('打样需求单已导出');}catch(error){toast(error.message);}};
-$('#reset').onclick=()=>{if(confirm('重置为示例数据？当前对话、BOM、输入草稿与本地交接单将被清除。')){cancelModel(false);const mode=$('#model-mode').value;state=fresh();state.mode=mode;retryText=null;deletedRow=null;$('#undo-row').hidden=true;$('#chat-input').value='';$('#model-error').classList.add('hidden');render();}};
+$('#reset').onclick=()=>{if(confirm('重置为示例数据？当前对话、BOM、输入草稿与本地交接单将被清除。')){cancelModel(false);const mode=$('#model-mode').value;state=fresh();state.mode=mode;retryText=null;deletedRow=null;$('#undo-row').hidden=true;$('#chat-input').value='';$('#model-error').classList.add('hidden');setRequirements(false);render();showView('workspace');}};
 function showView(id){
   if(!document.getElementById(id)?.classList.contains('view'))return;
   document.querySelectorAll('.view').forEach(view=>view.classList.toggle('hidden',view.id!==id));
   document.querySelectorAll('.nav').forEach(nav=>{const active=nav.dataset.view===id;nav.classList.toggle('active',active);if(active)nav.setAttribute('aria-current','page');else nav.removeAttribute('aria-current');});
+  document.body.dataset.view=id;setNavigation(false,false);syncShell();
   window.scrollTo?.({top:0,behavior:'instant'});
 }
-document.querySelectorAll('[data-view]').forEach(button=>button.onclick=()=>showView(button.dataset.view));
+document.querySelectorAll('button[data-view]').forEach(button=>button.onclick=()=>showView(button.dataset.view));
 $('#knowledge-cards').innerHTML=entries.map(entry=>`<article class="card knowledge-entry"><span class="tag">演示条目</span><h2>${escape(entry.title)}</h2><p>${escape(entry.text)}</p><small>${escape(entry.source)}</small></article>`).join('');
 // Always-visible entry and an explicit local handoff flow. No external submission.
-$('header').insertAdjacentHTML('beforeend','<button id="human-support" class="secondary support-entry" aria-keyshortcuts="Alt+Shift+H" title="快捷键 Alt + Shift + H">人工协助 <span>Alt ⇧ H</span></button>');
+$('.sidebar-footer').insertAdjacentHTML('afterbegin','<button id="human-support" class="secondary support-entry" aria-keyshortcuts="Alt+Shift+H" title="快捷键 Alt + Shift + H">人工协助 <span>Alt ⇧ H</span></button>');
 $('.chat-card .card-heading .tag').id='assistant-status';
 $('#messages').insertAdjacentHTML('afterend','<div id="support-offer" class="support-offer hidden" role="status"><div><strong>需要工程师一起看？</strong><p id="offer-reason"></p></div><div class="actions"><button id="offer-accept" class="primary">转人工</button><button id="offer-dismiss" class="text-button">继续自助</button></div></div>');
 document.body.insertAdjacentHTML('beforeend',`<dialog id="support-dialog" aria-labelledby="support-title" aria-describedby="support-dialog-description"><div class="support-heading"><div><div class="eyebrow">HUMAN SUPPORT</div><h2 id="support-title">人工协助</h2><p class="support-subtitle">关闭窗口会保留草稿，可随时继续自助。</p></div><button id="close-support" class="secondary" aria-label="关闭人工协助">关闭</button></div><p id="support-dialog-description" class="support-disclaimer">当前为本地演示：未连接客服后台，不会真实排队或发送消息。</p><div id="support-ticket-status" role="status"></div><form id="support-form"><div class="support-fields"><label for="support-reason">协助原因</label><select id="support-reason"><option>用户主动申请人工协助</option><option>连续两次未能理解需求</option><option>知识库未找到可靠答案</option><option>用户反馈问题尚未解决</option><option>替代料兼容性需要工程师核对</option><option>BOM 异常需要人工核对</option></select><label for="support-note">补充说明 <span>（选填）</span></label><textarea id="support-note" rows="3" maxlength="1000" placeholder="例如：请帮我核对 U2 的替代型号是否兼容。"></textarea></div><div class="support-review"><div id="handoff-preview" class="handoff-preview"></div><p class="snapshot-note">保存时包含当前参数、完整 BOM、异常项及最近最多 100 条对话。保存后如有修改，可更新交接单。</p></div><div class="dialog-actions"><button id="save-handoff" class="primary" type="submit">保存本地交接单</button><button id="download-handoff" class="secondary" type="button">下载交接单 JSON</button><button id="resume-assistant" class="text-button" type="button">继续自助</button></div></form></dialog>`);
@@ -142,6 +144,7 @@ function refreshSupportDialog(){
 let supportOpener=null,supportReturnToConversation=false;
 function openSupport(reason){
   if($('#support-dialog').open)return;
+  setNavigation(false,false);
   cancelModel(true);
   supportOpener=document.activeElement;
   const requested=reason||state.supportDraft?.reason||state.offer||state.ticket?.reason||'用户主动申请人工协助';
@@ -179,11 +182,11 @@ $('#close-support').innerHTML='<span aria-hidden="true">×</span>';
 $('#close-support').title='关闭窗口，保留草稿（Esc）';
 $('#close-support').setAttribute('aria-label','关闭人工协助，保留草稿');
 $('.dialog-actions').insertAdjacentHTML('beforebegin','<p class="close-hint">“继续自助”会结束本次本地协助状态，并返回对话输入框。</p>');
-$('.chat-card .card-heading').insertAdjacentHTML('afterend','<details class="assistant-settings"><summary>对话设置</summary><div class="floating-panel settings-panel"><div class="model-toolbar"><label for="model-mode">对话模式</label><select id="model-mode"><option value="deepseek">DeepSeek 自然对话</option><option value="rules">离线规则演示</option></select><button id="refresh-model" class="text-button">检查模型配置</button></div><div id="model-config" class="model-config" role="status"></div></div></details>');
+$('.header-tools').insertAdjacentHTML('afterbegin','<details class="assistant-settings"><summary>对话设置</summary><div class="floating-panel settings-panel"><div class="model-toolbar"><label for="model-mode">对话模式</label><select id="model-mode"><option value="deepseek">DeepSeek 自然对话</option><option value="rules">离线规则演示</option></select><button id="refresh-model" class="text-button">检查模型配置</button></div><div id="model-config" class="model-config" role="status"></div></div></details>');
 $('#model-mode').value=state.mode||'deepseek';
 state.mode=$('#model-mode').value;
 $('#chat-input').maxLength=4000;
-$('.assistant-settings').insertAdjacentHTML('afterend','<div id="backend-status" class="backend-status hidden" role="status" aria-live="polite"><span id="backend-status-text"></span><div class="actions"><button id="retry-connection" class="text-button" type="button" hidden>重新连接</button><button id="use-offline" class="text-button" type="button">先用离线演示</button></div></div>');
+$('.chat-card .card-heading').insertAdjacentHTML('afterend','<div id="backend-status" class="backend-status hidden" role="status" aria-live="polite"><span id="backend-status-text"></span><div class="actions"><button id="retry-connection" class="text-button" type="button" hidden>重新连接</button><button id="use-offline" class="text-button" type="button">先用离线演示</button></div></div>');
 $('#chat-form').insertAdjacentHTML('beforebegin','<div id="model-progress" class="model-progress hidden" role="status"><span id="model-progress-text">正在理解需求…</span><button id="cancel-model" class="text-button" type="button">停止等待</button></div><div id="model-error" class="model-error hidden" role="alert"><span id="model-error-text"></span><div class="actions"><button id="retry-model" class="secondary" type="button">重试上一条</button><button id="error-support" class="text-button" type="button">转人工</button></div></div><div id="parameter-proposal" class="parameter-proposal hidden"></div>');
 let connectionPromise=null;
 function renderModel(){
@@ -259,7 +262,7 @@ function loadBomExample(kind){
 }
 $('#load-merge').onclick=()=>loadBomExample('merge');
 $('#load-anomalies').onclick=()=>loadBomExample('anomalies');
-$('#scope-link').onclick=()=>document.querySelector('[data-view="about"]').click();
+$('#scope-link').onclick=()=>document.querySelector('.nav[data-view="about"]').click();
 function locateBom(event){
   const button=event.target.closest('[data-locate]');if(!button)return;
   const row=$('#bom-row-'+button.dataset.locate);if(!row){toast('请先添加物料');return;}
@@ -270,32 +273,81 @@ function locateBom(event){
 }
 $('#issues').onclick=locateBom;$('#merged-body').onclick=locateBom;
 // Fill examples for deliberate sending; do not spend API calls on guide clicks.
-// The compact sheet changes presentation only; progress uses confirmed parameters.
-$('#toggle-params').onclick=()=>{
-  const expanded=$('#toggle-params').getAttribute('aria-expanded')!=='true';
+// The shell displays current confirmed state; no extra history or service is implied.
+function setRequirements(expanded){
   $('.params-card').dataset.expanded=String(expanded);
+  $('.work-grid').classList.toggle('has-requirements',expanded);
   $('#toggle-params').setAttribute('aria-expanded',String(expanded));
   $('#parameter-toggle-text').textContent=expanded?'收起清单':'查看清单';
+  syncShell();
+}
+$('#toggle-params').onclick=()=>{
+  const expanded=$('#toggle-params').getAttribute('aria-expanded')!=='true';
+  setRequirements(expanded);
+  if(matchMedia('(max-width:1199px)').matches)(expanded?$('.params-card'):$('#chat-form')).scrollIntoView({behavior:'auto',block:expanded?'start':'end'});
 };
+function setNavigation(open,restoreFocus=true){
+  document.body.classList.toggle('navigation-open',open);
+  $('#menu-toggle').setAttribute('aria-expanded',String(open));
+  $('#navigation-backdrop').hidden=!open;
+  const compact=matchMedia('(max-width:900px)').matches;
+  $('#app-sidebar').inert=compact&&!open;
+  $('main').inert=compact&&open;
+  if(open)$('#close-navigation').focus();
+  else if(restoreFocus&&compact)$('#menu-toggle').focus();
+}
+$('#menu-toggle').onclick=()=>setNavigation($('#menu-toggle').getAttribute('aria-expanded')!=='true');
+$('#close-navigation').onclick=()=>setNavigation(false);
+$('#navigation-backdrop').onclick=()=>setNavigation(false);
+document.addEventListener('keydown',event=>{
+  if(!document.body.classList.contains('navigation-open'))return;
+  if(event.key==='Escape'){event.preventDefault();setNavigation(false);}
+  if(event.key==='Tab'){
+    const items=[...$('#app-sidebar').querySelectorAll('a[href],button:not(:disabled)')].filter(e=>e.getClientRects().length);
+    const first=items[0],last=items.at(-1);
+    if(event.shiftKey&&(document.activeElement===first||!$('#app-sidebar').contains(document.activeElement))){event.preventDefault();last?.focus();}
+    else if(!event.shiftKey&&(document.activeElement===last||!$('#app-sidebar').contains(document.activeElement))){event.preventDefault();first?.focus();}
+  }
+});
+function syncShell(){
+  const complete=Object.keys(fields).filter(key=>state.params[key]).length;
+  const next=Object.keys(fields).find(key=>!state.params[key]);
+  $('#sidebar-demand-state').textContent=`${complete} / 5 项已确认`;
+  $('#sidebar-demand-next').textContent=next?`下一项补充：${fields[next]}`:'参数已齐全，可以核对 BOM';
+  $('#toggle-params').setAttribute('aria-label',`${$('#toggle-params').getAttribute('aria-expanded')==='true'?'收起':'查看'}已确认需求清单，已确认 ${complete} / 5 项`);
+  $('#toggle-params').hidden=document.body.dataset.view!=='workspace';
+  $('#current-view-name').textContent=({workspace:'需求对话','bom-view':'BOM 校验',about:'项目说明',knowledge:'辅助问答'})[document.body.dataset.view]||'需求对话';
+  $('.mode').dataset.status=$('#model-mode').value==='rules'?'offline':modelInfo.loading?'connecting':modelInfo.configured?'ready':'unavailable';
+  const compact=matchMedia('(max-width:900px)').matches,entry=$('#human-support');
+  const destination=compact?$('header'):$('.sidebar-footer');
+  if(entry.parentElement!==destination)destination.append(entry);
+  if(!compact&&document.body.classList.contains('navigation-open'))setNavigation(false,false);
+  $('#app-sidebar').inert=compact&&!document.body.classList.contains('navigation-open');
+  $('main').inert=compact&&document.body.classList.contains('navigation-open');
+}
+window.addEventListener('resize',syncShell);
 function updateExampleSelection(){for(const button of document.querySelectorAll('[data-example-prompt]'))button.setAttribute('aria-pressed',String($('#chat-input').value===button.dataset.examplePrompt));}
 for(const button of document.querySelectorAll('[data-example-prompt]'))button.onclick=()=>{$('#chat-input').value=button.dataset.examplePrompt;state.composer=button.dataset.examplePrompt;updateExampleSelection();save();$('#chat-input').scrollIntoView({behavior:'auto',block:'nearest'});$('#chat-input').focus({preventScroll:true});};
 // Keep disclosure panels anchored to their controls and inside the visible area.
 $('.more-examples>div').classList.add('floating-panel','example-panel');
 const floatingDetails='.assistant-settings,.route-details,.more-examples';
-function positionOpenPanels(){
+function positionOpenPanels(event){
+  if(event?.type==='scroll'&&event.target?.closest?.('.floating-panel'))return;
   for(const details of document.querySelectorAll(floatingDetails)){
     if(!details.open)continue;
     const panel=details.querySelector('.floating-panel'),summary=details.querySelector('summary');if(!panel||!summary)continue;
+    const inHeader=Boolean(details.closest('.app-header'));
     const anchor=summary.getBoundingClientRect(),visual=window.visualViewport;
     const leftBound=(visual?.offsetLeft||0)+12,rightBound=Math.min(innerWidth,(visual?.offsetLeft||0)+(visual?.width||innerWidth))-12;
     const topBound=Math.max(document.querySelector('header').getBoundingClientRect().bottom,visual?.offsetTop||0)+8;
     const bottomBound=Math.min(innerHeight,(visual?.offsetTop||0)+(visual?.height||innerHeight))-8;
-    if(anchor.bottom<topBound||anchor.top>bottomBound){details.open=false;continue;}
-    panel.style.maxWidth=Math.max(0,rightBound-leftBound)+'px';panel.style.maxHeight=Math.max(0,bottomBound-topBound)+'px';
-    const below=bottomBound-anchor.bottom-8,above=anchor.top-topBound-8,natural=panel.scrollHeight;
+    if(!inHeader&&(anchor.bottom<topBound||anchor.top>bottomBound)){details.open=false;continue;}
+    panel.style.maxWidth=Math.max(0,rightBound-leftBound)+'px';
+    const anchorBottom=inHeader?Math.max(anchor.bottom,document.querySelector('header').getBoundingClientRect().bottom):anchor.bottom;
+    const below=bottomBound-anchorBottom-8,above=anchor.top-topBound-8,natural=panel.scrollHeight;
     const useBelow=below>=natural||below>=above;
     panel.style.maxHeight=Math.max(0,useBelow?below:above)+'px';
-    const box=panel.getBoundingClientRect(),top=useBelow?anchor.bottom+8:anchor.top-box.height-8;
+    const box=panel.getBoundingClientRect(),top=useBelow?anchorBottom+8:anchor.top-box.height-8;
     panel.style.left=Math.max(leftBound,Math.min(anchor.right-box.width,rightBound-box.width))+'px';
     panel.style.top=Math.max(topBound,Math.min(top,bottomBound-box.height))+'px';
   }

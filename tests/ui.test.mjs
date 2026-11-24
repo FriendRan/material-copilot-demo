@@ -3,6 +3,22 @@ import assert from 'node:assert/strict';
 import {mount,baseParams,flush,waitFor} from './ui-harness.mjs';
 const answer=(overrides={})=>({reply:'请确认本次建议。',intent:'collect',updates:{},clear_fields:[],handoff:'none',handoff_reason:'',model:'test-model',...overrides});
 
+test('页面：侧栏导航保留待确认建议和草稿，新建需求须确认并返回对话',async()=>{
+  const page=await mount({seed:{params:baseParams,composer:'交期还要再确认'}});try{
+    page.submit('改成20块');
+    page.$('#chat-input').value='交期还要再确认';page.$('#chat-input').dispatchEvent(new page.win.Event('input'));
+    const proposal=page.state().proposal;
+    page.$('#menu-toggle').click();assert.equal(page.$('#menu-toggle').getAttribute('aria-expanded'),'true');
+    page.$('.nav[data-view="bom-view"]').click();
+    assert.equal(page.$('#menu-toggle').getAttribute('aria-expanded'),'false');assert.equal(page.win.document.body.dataset.view,'bom-view');
+    page.win.document.body.click();assert.equal(page.win.document.body.dataset.view,'bom-view');
+    assert.deepEqual(page.state().proposal,proposal);assert.equal(page.$('#chat-input').value,'交期还要再确认');assert.equal(page.state().params.quantity,'10');
+    const before=page.state();page.win.confirm=()=>false;page.$('#reset').click();assert.deepEqual(page.state(),before);assert.equal(page.win.document.body.dataset.view,'bom-view');
+    page.win.confirm=()=>true;page.$('#reset').click();assert.equal(page.win.document.body.dataset.view,'workspace');assert.deepEqual(page.state().params,{});assert.equal(page.state().proposal,undefined);
+    assert.equal(page.$('#chat-input').value,'');assert.equal(page.$('#sidebar-demand-state').textContent,'0 / 5 项已确认');assert.equal(page.$('#toggle-params').getAttribute('aria-expanded'),'false');assert.equal(page.requests.length,0);
+  }finally{await page.close();}
+});
+
 test('页面：紧凑需求清单仅展示已确认参数，展开收起不影响待确认建议或草稿',async()=>{
   const page=await mount();try{
     const toggle=page.$('#toggle-params');

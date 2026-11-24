@@ -15,6 +15,9 @@ export async function mount({seed={},reply,live=false,configFetch}={}){
   win.localStorage.setItem('material-demo-v1',JSON.stringify(state));
   const html=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
   win.document.write(html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<link\b[^>]*>/gi,''));
+  // document.write does not reliably transfer body attributes in Happy DOM.
+  win.document.body.className=html.match(/<body[^>]*class="([^"]*)"/)?.[1]||'';
+  const bodyView=html.match(/<body[^>]*data-view="([^"]*)"/)?.[1];if(bodyView)win.document.body.dataset.view=bodyView;
   win.confirm=()=>true;win.structuredClone=structuredClone;
   win.AbortController=AbortController;
   win.HTMLElement.prototype.scrollIntoView=function(){this.__scrolled=true;};
