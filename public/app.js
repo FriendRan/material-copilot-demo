@@ -5,11 +5,12 @@ import {connectBackend,waitForConnection} from './connection.js';
 import {intentLabels,routeActions,mergeExample,anomalyExample,repairedAnomaly} from './showcase.js';
 const $=selector=>document.querySelector(selector);
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const welcome={role:'assistant',text:'板层、尺寸、数量，确定多少就先说多少。\n剩下的参数我会接着问，确认后再整理进需求单。'};
+const welcome={role:'assistant',text:'有什么物料问题需要帮忙？\n工艺、物料、打样需求，都可以直接问。'};
 const actionIcon=name=>'<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({headset:'<path d="M4 13v-1a8 8 0 0 1 16 0v1M6 12H4v7h3v-7ZM18 12h2v7h-3v-7ZM17 19c0 2-2 2-5 2"/>',chip:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 3v3m6-3v3M9 18v3m6-3v3M3 9h3m-3 6h3m12-6h3m-3 6h3M10 10h4v4h-4z"/>'}[name]||'')+'</svg>';
 const boardArtwork='<svg class="board-art" viewBox="0 0 148 124" fill="none" aria-hidden="true"><path d="m14 78 60 33 60-33-60-33-60 33Z" fill="#edf2f7" stroke="#b6c7d7"/><path d="m14 67 60 33 60-33-60-33-60 33Z" fill="#f6f9fc" stroke="#a0b6cc"/><path d="m14 54 60 33 60-33-60-33-60 33Z" fill="#e4eef7" stroke="#7c9bb7" stroke-width="1.5"/><path d="m47 52 27-15 27 15-27 15-27-15Z" fill="#345f82"/><path d="m55 52 19-10 19 10-19 10-19-10Z" fill="#547d9b"/><g stroke="#6b8faa" stroke-width="1.5" stroke-linecap="round"><path d="m48 43 8 4m-16 1 8 4m-7 5 8 4m44-18-8 4m16 1-8 4m7 5-8 4M61 66v8m13-6v10m13-12v8M37 65l-8 5m82-5 8 5M60 30l-9-5m37 5 9-5"/></g><g fill="#fff" stroke="#91abc1"><ellipse cx="29" cy="54" rx="4" ry="2.4"/><ellipse cx="119" cy="54" rx="4" ry="2.4"/><ellipse cx="74" cy="29" rx="4" ry="2.4"/><ellipse cx="74" cy="79" rx="4" ry="2.4"/></g></svg>';
 const fresh=()=>({params:{},rows:structuredClone(sampleRows),messages:[welcome]});
 let state=fresh();
+let mobileLayout=null;
 let modelInfo={configured:false,loading:true},modelBusy=false,modelController=null,requestSequence=0,retryText=null;
 try { const saved=JSON.parse(localStorage.getItem('material-demo-v1')); if(saved && Array.isArray(saved.rows)&&Array.isArray(saved.messages)&&saved.params)state=saved; }catch{}
 const entries=[
@@ -33,7 +34,7 @@ function renderMessages(){
   $('#workspace').classList.toggle('is-opening',state.messages.length===1&&state.messages[0]?.role==='assistant');
   $('#messages').innerHTML=state.messages.map((m,index)=>{
     const opening=index===0&&state.messages.length===1&&m.role==='assistant';
-    return `<div class="message ${m.role==='user'?'user':'assistant'}${opening?' intro-message':''}">${opening?boardArtwork:`<div class="avatar">${m.role==='user'?'你':actionIcon('chip')}</div>`}<div class="bubble">${opening?'<h3>先说说，这次要做什么板？</h3>':''}${escape(m.text).replaceAll('\n','<br>')}<div class="message-meta">${m.role==='user'?'你':escape(m.source||'料知 · 自动助手')}${m.time?' · '+escape(m.time):''}</div>${m.role==='assistant'&&index>0?`<div class="feedback"><button data-feedback="${index}" data-value="yes" ${m.feedback?'disabled':''}>${m.feedback==='yes'?'✓ 已帮助到我':'有帮助'}</button><button data-feedback="${index}" data-value="no" ${m.feedback?'disabled':''}>${m.feedback==='no'?'已记录未解决':'未解决'}</button></div>`:''}</div></div>`;
+    return `<div class="message ${m.role==='user'?'user':'assistant'}${opening?' intro-message':''}">${opening?boardArtwork:`<div class="avatar">${m.role==='user'?'你':actionIcon('chip')}</div>`}<div class="bubble">${opening?'<h3>你好，我是料知</h3>':''}${escape(m.text).replaceAll('\n','<br>')}<div class="message-meta">${m.role==='user'?'你':escape(m.source||'料知 · 自动助手')}${m.time?' · '+escape(m.time):''}</div>${m.role==='assistant'&&index>0?`<div class="feedback"><button data-feedback="${index}" data-value="yes" ${m.feedback?'disabled':''}>${m.feedback==='yes'?'✓ 已帮助到我':'有帮助'}</button><button data-feedback="${index}" data-value="no" ${m.feedback?'disabled':''}>${m.feedback==='no'?'已记录未解决':'未解决'}</button></div>`:''}</div></div>`;
   }).join('');
   if(state.pending){const wrap=document.createElement('div');wrap.className='clarification';['问参数','报参数','问替代料','要出单'].forEach(label=>{const button=document.createElement('button');button.textContent=label;button.onclick=()=>{const pending=state.pending,engine=state.pendingEngine;delete state.pending;delete state.pendingEngine;if(engine==='deepseek'){send(`我确认刚才的意图是“${label}”，原话是：${pending}`);}else{message('user',label);respond(pending,label==='问替代料'?'查替料':label);}};wrap.append(button);});$('#messages').append(wrap);}
   $('#messages').scrollTop=$('#messages').scrollHeight;
@@ -284,7 +285,7 @@ function setRequirements(expanded){
 $('#toggle-params').onclick=()=>{
   const expanded=$('#toggle-params').getAttribute('aria-expanded')!=='true';
   setRequirements(expanded);
-  if(matchMedia('(max-width:1199px)').matches)(expanded?$('.params-card'):$('#chat-form')).scrollIntoView({behavior:'auto',block:expanded?'start':'end'});
+  if(matchMedia('(min-width:601px) and (max-width:1199px)').matches)(expanded?$('.params-card'):$('#chat-form')).scrollIntoView({behavior:'auto',block:expanded?'start':'end'});
 };
 function setNavigation(open,restoreFocus=true){
   document.body.classList.toggle('navigation-open',open);
@@ -312,18 +313,26 @@ document.addEventListener('keydown',event=>{
 function syncShell(){
   const complete=Object.keys(fields).filter(key=>state.params[key]).length;
   const next=Object.keys(fields).find(key=>!state.params[key]);
-  $('#sidebar-demand-state').textContent=`${complete} / 5 项已确认`;
-  $('#sidebar-demand-next').textContent=next?`下一项补充：${fields[next]}`:'参数已齐全，可以核对 BOM';
+  const collecting=complete>0||Boolean(state.proposal)||state.route?.label==='报参数';
+  $('.sidebar-context>span').textContent=collecting?'当前需求':'服务范围';
+  document.querySelectorAll('.example-question').forEach(button=>button.hidden=collecting);
+  document.querySelectorAll('.example-parameter').forEach(button=>button.hidden=!collecting);
+  $('.quick-label').textContent=collecting?'继续说明':'你可以这样问';
+  $('#compact-progress').hidden=!collecting;
+  $('#sidebar-demand-state').textContent=collecting?`${complete} / 5 项已确认`:'PCB 打样 · 工艺咨询';
+  $('#sidebar-demand-next').textContent=collecting?(next?`下一项补充：${fields[next]}`:'参数已齐全，可以核对 BOM'):'物料问题 · 需求协助';
   $('#toggle-params').setAttribute('aria-label',`${$('#toggle-params').getAttribute('aria-expanded')==='true'?'收起':'查看'}已确认需求清单，已确认 ${complete} / 5 项`);
   $('#toggle-params').hidden=document.body.dataset.view!=='workspace';
-  $('#current-view-name').textContent=({workspace:'需求对话','bom-view':'BOM 校验',about:'项目说明',knowledge:'辅助问答'})[document.body.dataset.view]||'需求对话';
+  $('#current-view-name').textContent=({workspace:'智能客服','bom-view':'BOM 校验',about:'项目说明',knowledge:'辅助问答'})[document.body.dataset.view]||'需求对话';
   $('.mode').dataset.status=$('#model-mode').value==='rules'?'offline':modelInfo.loading?'connecting':modelInfo.configured?'ready':'unavailable';
   const compact=matchMedia('(max-width:900px)').matches,entry=$('#human-support');
+  if(compact&&document.body.dataset.view==='workspace')$('#current-view-name').textContent='料知 · 智能客服';
   const destination=compact?$('header'):$('.sidebar-footer');
   if(entry.parentElement!==destination)destination.append(entry);
   if(!compact&&document.body.classList.contains('navigation-open'))setNavigation(false,false);
   $('#app-sidebar').inert=compact&&!document.body.classList.contains('navigation-open');
   $('main').inert=compact&&document.body.classList.contains('navigation-open');
+  mobileLayout?.sync();
 }
 window.addEventListener('resize',syncShell);
 function updateExampleSelection(){for(const button of document.querySelectorAll('[data-example-prompt]'))button.setAttribute('aria-pressed',String($('#chat-input').value===button.dataset.examplePrompt));}
@@ -362,5 +371,54 @@ document.addEventListener('keydown',event=>{if(event.key==='Escape')for(const de
 window.addEventListener('resize',positionOpenPanels);
 window.addEventListener('scroll',positionOpenPanels,true);
 window.visualViewport?.addEventListener('resize',positionOpenPanels);
+// Mobile composition reuses the desktop state, confirmation flow and controls.
+function mountMobileLayout(){
+  const mobile=matchMedia('(max-width:600px)'),panel=$('.params-card'),grid=$('.work-grid');
+  const toggle=$('#toggle-params'),settings=$('.assistant-settings'),headerTools=$('.header-tools');
+  const tools=document.createElement('div');tools.className='mobile-chat-tools';
+  tools.innerHTML='<span class="mobile-confirm-note">确认后更新</span>';
+  $('#chat-form').before(tools);
+  const dialog=document.createElement('dialog');dialog.id='mobile-params-dialog';
+  dialog.setAttribute('aria-labelledby','mobile-params-title');
+  const close=document.createElement('button');close.type='button';close.className='mobile-sheet-close';close.setAttribute('aria-label','关闭需求清单');
+  close.innerHTML='<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+  close.onclick=()=>setRequirements(false);
+  panel.querySelector('.card-heading').append(close);panel.querySelector('h2').id='mobile-params-title';grid.append(dialog);
+  dialog.addEventListener('cancel',event=>{event.preventDefault();setRequirements(false);});
+  dialog.addEventListener('click',event=>{if(event.target===dialog)setRequirements(false);});
+  dialog.addEventListener('close',()=>{if(mobile.matches&&panel.dataset.expanded==='true')setRequirements(false);});
+  panel.querySelector('[data-view="bom-view"]').addEventListener('click',()=>setRequirements(false));
+  const privacy=$('.composer-privacy'),desktopPrivacy=privacy.textContent,input=$('#chat-input'),desktopPlaceholder=input.placeholder;
+  const caption=$('.service-caption'),desktopCaption=caption.textContent;
+  let wasMobile=false;
+  function sizeInput(){
+    if(mobile.matches){input.style.height='0px';input.style.height=Math.min(108,Math.max(36,input.scrollHeight))+'px';}
+    else input.style.removeProperty('height');
+  }
+  input.addEventListener('input',sizeInput);$('#chat-form').addEventListener('submit',()=>queueMicrotask(sizeInput));
+  function sync(){
+    const isMobile=mobile.matches;
+    if(isMobile){
+      if(toggle.parentElement!==tools)tools.prepend(toggle);
+      if(settings.parentElement!==$('.sidebar-footer'))$('.sidebar-footer').prepend(settings);
+      if(document.body.dataset.view==='workspace')$('#current-view-name').textContent='料知';
+      caption.textContent='工业物料智能客服';
+      privacy.textContent='仅将必要需求信息发送给 DeepSeek';input.placeholder='说说你的物料问题或打样需求…';
+      const expanded=panel.dataset.expanded==='true'&&document.body.dataset.view==='workspace';
+      if(panel.parentElement!==dialog)dialog.append(panel);
+      if(expanded&&!dialog.open){document.querySelectorAll('.floating-panel').forEach(p=>{if(p.parentElement.tagName==='DETAILS')p.parentElement.open=false;});dialog.showModal();close.focus({preventScroll:true});}
+      else if(!expanded&&dialog.open){dialog.close();toggle.focus({preventScroll:true});}
+    }else{
+      if(dialog.open)dialog.close();
+      if(panel.parentElement!==grid)grid.append(panel);
+      if(toggle.parentElement!==headerTools)headerTools.append(toggle);
+      if(settings.parentElement!==headerTools)headerTools.prepend(settings);
+      privacy.textContent=desktopPrivacy;input.placeholder=desktopPlaceholder;caption.textContent=desktopCaption;
+    }
+    if(isMobile!==wasMobile){wasMobile=isMobile;sizeInput();}
+  }
+  return {sync};
+}
+mobileLayout=mountMobileLayout();
 render();
 refreshModel();

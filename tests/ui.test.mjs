@@ -15,7 +15,7 @@ test('页面：侧栏导航保留待确认建议和草稿，新建需求须确�
     assert.deepEqual(page.state().proposal,proposal);assert.equal(page.$('#chat-input').value,'交期还要再确认');assert.equal(page.state().params.quantity,'10');
     const before=page.state();page.win.confirm=()=>false;page.$('#reset').click();assert.deepEqual(page.state(),before);assert.equal(page.win.document.body.dataset.view,'bom-view');
     page.win.confirm=()=>true;page.$('#reset').click();assert.equal(page.win.document.body.dataset.view,'workspace');assert.deepEqual(page.state().params,{});assert.equal(page.state().proposal,undefined);
-    assert.equal(page.$('#chat-input').value,'');assert.equal(page.$('#sidebar-demand-state').textContent,'0 / 5 项已确认');assert.equal(page.$('#toggle-params').getAttribute('aria-expanded'),'false');assert.equal(page.requests.length,0);
+    assert.equal(page.$('#chat-input').value,'');assert.equal(page.$('#sidebar-demand-state').textContent,'PCB 打样 · 工艺咨询');assert.equal(page.$('#toggle-params').getAttribute('aria-expanded'),'false');assert.equal(page.requests.length,0);
   }finally{await page.close();}
 });
 
