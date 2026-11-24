@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import {mount,baseParams,flush,waitFor} from './ui-harness.mjs';
 const answer=(overrides={})=>({reply:'请确认本次建议。',intent:'collect',updates:{},clear_fields:[],handoff:'none',handoff_reason:'',model:'test-model',...overrides});
 
+test('页面：站内确认窗口取消不清空数据，确认后才重置或替换 BOM',async()=>{
+  const page=await mount({seed:{params:baseParams,composer:'保留草稿'},confirmations:'manual'});try{
+    const before=page.state();page.$('#reset').click();assert.equal(page.$('#confirmation-dialog').open,true);assert.deepEqual(page.state(),before);
+    page.$('#cancel-confirmation').click();assert.deepEqual(page.state(),before);
+    page.$('#load-anomalies').click();assert.equal(page.$('#confirmation-dialog').open,true);assert.equal(page.state().bomDemo,undefined);
+    page.$('#accept-confirmation').click();assert.equal(page.state().bomDemo,'anomalies');assert.deepEqual(page.state().params,baseParams);assert.equal(page.$('#chat-input').value,'保留草稿');
+    page.$('#reset').click();page.$('#accept-confirmation').click();assert.deepEqual(page.state().params,{});assert.equal(page.$('#chat-input').value,'');assert.equal(page.$('#confirmation-dialog').open,false);
+  }finally{await page.close();}
+});
+
 test('页面：侧栏导航保留待确认建议和草稿，新建需求须确认并返回对话',async()=>{
   const page=await mount({seed:{params:baseParams,composer:'交期还要再确认'}});try{
     page.submit('改成20块');

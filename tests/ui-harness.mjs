@@ -9,7 +9,7 @@ import * as connection from '../public/connection.js';
 export const baseParams={layers:'4层',size:'100 × 80 mm',quantity:'10',process:'沉金',delivery:'7天'};
 export async function flush(){for(let i=0;i<10;i++)await new Promise(resolve=>setImmediate(resolve));}
 export async function waitFor(check,timeout=4000){const start=Date.now();while(!check()){if(Date.now()-start>timeout)throw Error('Timed out waiting for page state');await new Promise(resolve=>setTimeout(resolve,10));}}
-export async function mount({seed={},reply,live=false,configFetch}={}){
+export async function mount({seed={},reply,live=false,configFetch,confirmations='auto'}={}){
   const win=new Window({url:'http://127.0.0.1:4173/'});
   const state={params:{},rows:structuredClone(core.sampleRows),messages:[{role:'assistant',text:'这次打样需要几层板？'}],mode:'rules',...seed};
   win.localStorage.setItem('material-demo-v1',JSON.stringify(state));
@@ -19,6 +19,8 @@ export async function mount({seed={},reply,live=false,configFetch}={}){
   win.document.body.className=html.match(/<body[^>]*class="([^"]*)"/)?.[1]||'';
   const bodyView=html.match(/<body[^>]*data-view="([^"]*)"/)?.[1];if(bodyView)win.document.body.dataset.view=bodyView;
   win.confirm=()=>true;win.structuredClone=structuredClone;
+  const nativeShowModal=win.HTMLDialogElement.prototype.showModal;
+  win.HTMLDialogElement.prototype.showModal=function(){nativeShowModal.call(this);if(this.id==='confirmation-dialog'&&confirmations==='auto')this.querySelector(win.confirm(this.querySelector('#confirmation-description').textContent)?'#accept-confirmation':'#cancel-confirmation').click();};
   win.AbortController=AbortController;
   win.HTMLElement.prototype.scrollIntoView=function(){this.__scrolled=true;};
   const requests=[],downloads=[];const blobs=new Map();

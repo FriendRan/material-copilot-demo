@@ -11,6 +11,26 @@ const boardArtwork='<svg class="board-art" viewBox="0 0 148 124" fill="none" ari
 const fresh=()=>({params:{},rows:structuredClone(sampleRows),messages:[welcome]});
 let state=fresh();
 let mobileLayout=null;
+const closeArtwork='<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+const disclosureHeading=title=>`<div class="surface-heading"><h3>${escape(title)}</h3><button type="button" class="surface-close" data-close-disclosure aria-label="关闭${escape(title)}">${closeArtwork}</button></div>`;
+function confirmAction(title,description,label,onConfirm){
+  let dialog=$('#confirmation-dialog');
+  if(!dialog){
+    document.body.insertAdjacentHTML('beforeend',`<dialog id="confirmation-dialog" class="confirmation-dialog" aria-labelledby="confirmation-title" aria-describedby="confirmation-description"><div class="surface-heading"><h2 id="confirmation-title"></h2><button class="surface-close" type="button" id="close-confirmation" aria-label="关闭确认窗口">${closeArtwork}</button></div><p id="confirmation-description"></p><div class="confirmation-actions"><button class="secondary" type="button" id="cancel-confirmation">取消</button><button class="primary" type="button" id="accept-confirmation"></button></div></dialog>`);
+    dialog=$('#confirmation-dialog');
+    $('#close-confirmation').onclick=$('#cancel-confirmation').onclick=()=>dialog.close();
+    let outsideDown=false;
+    const outside=e=>{const r=dialog.getBoundingClientRect();return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom;};
+    dialog.addEventListener('pointerdown',e=>{outsideDown=e.target===dialog&&outside(e);});
+    dialog.addEventListener('pointerup',e=>{if(outsideDown&&e.target===dialog&&outside(e))dialog.close();outsideDown=false;});
+  }
+  if(dialog.open)return;
+  const opener=document.activeElement;
+  $('#confirmation-title').textContent=title;$('#confirmation-description').textContent=description;$('#accept-confirmation').textContent=label;
+  $('#accept-confirmation').onclick=()=>{dialog.close();onConfirm();};
+  dialog.addEventListener('close',()=>{const target=opener?.isConnected&&!opener.closest('[inert]')?opener:$('#menu-toggle');if(target?.getClientRects().length)target.focus({preventScroll:true});},{once:true});
+  dialog.showModal();if(dialog.open)$('#cancel-confirmation').focus({preventScroll:true});
+}
 let modelInfo={configured:false,loading:true},modelBusy=false,modelController=null,requestSequence=0,retryText=null;
 try { const saved=JSON.parse(localStorage.getItem('material-demo-v1')); if(saved && Array.isArray(saved.rows)&&Array.isArray(saved.messages)&&saved.params)state=saved; }catch{}
 const entries=[
@@ -28,7 +48,7 @@ function recordParams(before,after){
 }
 function renderRouting(){
   const route=state.route;
-  $('#routing').innerHTML='<div class="route-label">'+(modelBusy?'正在判断意图…':route?'当前分流：<b>'+escape(route.label)+'</b>':'等待输入需求')+'</div><details class="route-details"><summary>分流说明</summary><div class="floating-panel route-panel"><div class="route-options">'+['问参数','报参数','问替代料','要出单'].map(label=>`<span class="${route?.label===label?'selected':''}">${label}</span>`).join('')+'</div><p>'+escape(route?routeActions[route.label]||'确认需求后继续处理':'意图不明确时先反问确认，不直接进入后续流程。')+'</p>'+(route?'<small>判断来源：'+escape(route.source)+'</small>':'')+'</div></details>';
+  $('#routing').innerHTML='<div class="route-label">'+(modelBusy?'正在判断意图…':route?'当前分流：<b>'+escape(route.label)+'</b>':'等待输入需求')+'</div><details class="route-details"><summary>分流说明</summary><div class="floating-panel route-panel">'+disclosureHeading('分流说明')+'<div class="route-options">'+['问参数','报参数','问替代料','要出单'].map(label=>`<span class="${route?.label===label?'selected':''}">${label}</span>`).join('')+'</div><p>'+escape(route?routeActions[route.label]||'确认需求后继续处理':'意图不明确时先反问确认，不直接进入后续流程。')+'</p>'+(route?'<small>判断来源：'+escape(route.source)+'</small>':'')+'</div></details>';
 }
 function renderMessages(){
   $('#workspace').classList.toggle('is-opening',state.messages.length===1&&state.messages[0]?.role==='assistant');
@@ -110,7 +130,7 @@ function download(name,content,type='text/csv;charset=utf-8'){const url=URL.crea
 $('#sample-download').onclick=()=>download('BOM示例.csv','\uFEFF'+[['型号','封装','数量','位号'],...sampleRows.map(row=>[row.model,row.package,row.quantity,row.refs])].map(row=>row.map(csvCell).join(',')).join('\r\n'));
 $('#import').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>1024*1024)throw Error('演示版支持 1MB 以内的 CSV');const rows=parseCsv(await file.text());if(rows.length>1000)throw Error('演示版最多支持 1000 行');state.rows=rows;delete state.bomDemo;deletedRow=null;$("#undo-row").hidden=true;render();toast(`已导入 ${rows.length} 行物料`);}catch(error){toast(error.message);}e.target.value='';};
 $('#export').onclick=()=>{try{if(modelBusy||state.proposal)throw Error('请先处理当前需求变更');download(`打样需求单_${$('#template').value}.csv`,makeOrder(state.rows,state.params,$('#template').value));toast('打样需求单已导出');}catch(error){toast(error.message);}};
-$('#reset').onclick=()=>{if(confirm('重置为示例数据？当前对话、BOM、输入草稿与本地交接单将被清除。')){cancelModel(false);const mode=$('#model-mode').value;state=fresh();state.mode=mode;retryText=null;deletedRow=null;$('#undo-row').hidden=true;$('#chat-input').value='';$('#model-error').classList.add('hidden');setRequirements(false);render();showView('workspace');}};
+$('#reset').onclick=()=>confirmAction('开始新需求？','当前对话、BOM、输入草稿与本地交接单将被清除。','清空并开始',()=>{cancelModel(false);const mode=$('#model-mode').value;state=fresh();state.mode=mode;retryText=null;deletedRow=null;$('#undo-row').hidden=true;$('#chat-input').value='';$('#model-error').classList.add('hidden');setRequirements(false);render();showView('workspace');});
 function showView(id){
   if(!document.getElementById(id)?.classList.contains('view'))return;
   document.querySelectorAll('.view').forEach(view=>view.classList.toggle('hidden',view.id!==id));
@@ -179,7 +199,7 @@ $('.bom-footer').insertAdjacentHTML('beforeend','<button id="undo-row" class="se
 $('#undo-row').onclick=()=>{if(deletedRow){state.rows.splice(deletedRow.index,0,deletedRow.row);deletedRow=null;render();$('#undo-row').hidden=true;toast('已恢复刚才删除的物料');}};
 $('#support-note').insertAdjacentHTML('afterend','<p id="support-draft-status" class="draft-status" role="status"></p>');
 $('#close-support').className='icon-close';
-$('#close-support').innerHTML='<span aria-hidden="true">×</span>';
+$('#close-support').innerHTML=closeArtwork;
 $('#close-support').title='关闭窗口，保留草稿（Esc）';
 $('#close-support').setAttribute('aria-label','关闭人工协助，保留草稿');
 $('.dialog-actions').insertAdjacentHTML('beforebegin','<p class="close-hint">“继续自助”会结束本次本地协助状态，并返回对话输入框。</p>');
@@ -258,8 +278,7 @@ $('#retry-model').onclick=()=>{if(retryText&&!modelBusy)requestModel(retryText);
 $('#error-support').onclick=()=>openSupport('用户反馈问题尚未解决');
 
 function loadBomExample(kind){
-  if(!confirm('加载示例将替换当前 BOM（对话和参数保留），是否继续？'))return;
-  state.rows=structuredClone(kind==='merge'?mergeExample:anomalyExample);state.bomDemo=kind;deletedRow=null;$('#undo-row').hidden=true;render();showView('bom-view');$('.bom-card').scrollIntoView({behavior:'smooth',block:'start'});
+  confirmAction('加载'+(kind==='merge'?'同键合并':'异常检查')+'示例？','将替换当前 BOM，对话和已确认参数会保留。','替换并加载',()=>{state.rows=structuredClone(kind==='merge'?mergeExample:anomalyExample);state.bomDemo=kind;deletedRow=null;$('#undo-row').hidden=true;render();showView('bom-view');$('.bom-card').scrollIntoView({behavior:'smooth',block:'start'});});
 }
 $('#load-merge').onclick=()=>loadBomExample('merge');
 $('#load-anomalies').onclick=()=>loadBomExample('anomalies');
@@ -302,6 +321,7 @@ $('#close-navigation').onclick=()=>setNavigation(false);
 $('#navigation-backdrop').onclick=()=>setNavigation(false);
 document.addEventListener('keydown',event=>{
   if(!document.body.classList.contains('navigation-open'))return;
+  if(document.querySelector('dialog[open]'))return;
   if(event.key==='Escape'){event.preventDefault();setNavigation(false);}
   if(event.key==='Tab'){
     const items=[...$('#app-sidebar').querySelectorAll('a[href],button:not(:disabled)')].filter(e=>e.getClientRects().length);
@@ -339,12 +359,17 @@ function updateExampleSelection(){for(const button of document.querySelectorAll(
 for(const button of document.querySelectorAll('[data-example-prompt]'))button.onclick=()=>{$('#chat-input').value=button.dataset.examplePrompt;state.composer=button.dataset.examplePrompt;updateExampleSelection();save();$('#chat-input').scrollIntoView({behavior:'auto',block:'nearest'});$('#chat-input').focus({preventScroll:true});};
 // Keep disclosure panels anchored to their controls and inside the visible area.
 $('.more-examples>div').classList.add('floating-panel','example-panel');
+$('.settings-panel').insertAdjacentHTML('afterbegin',disclosureHeading('对话设置'));
+$('.example-panel').insertAdjacentHTML('afterbegin',disclosureHeading('更多示例'));
+document.addEventListener('click',event=>{const close=event.target.closest('[data-close-disclosure]');if(close){const details=close.closest('details');details.open=false;details.querySelector('summary').focus({preventScroll:true});}});
 const floatingDetails='.assistant-settings,.route-details,.more-examples';
 function positionOpenPanels(event){
   if(event?.type==='scroll'&&event.target?.closest?.('.floating-panel'))return;
   for(const details of document.querySelectorAll(floatingDetails)){
     if(!details.open)continue;
     const panel=details.querySelector('.floating-panel'),summary=details.querySelector('summary');if(!panel||!summary)continue;
+    // The top layer keeps mobile drawer popups clear of ancestor clipping.
+    if(typeof panel.showPopover==='function'){if(!panel.hasAttribute('popover'))panel.setAttribute('popover','manual');if(!panel.matches(':popover-open'))panel.showPopover();}
     const inHeader=Boolean(details.closest('.app-header'));
     const anchor=summary.getBoundingClientRect(),visual=window.visualViewport;
     const leftBound=(visual?.offsetLeft||0)+12,rightBound=Math.min(innerWidth,(visual?.offsetLeft||0)+(visual?.width||innerWidth))-12;
@@ -362,7 +387,8 @@ function positionOpenPanels(event){
   }
 }
 document.addEventListener('toggle',event=>{
-  const details=event.target;if(!details.matches?.(floatingDetails)||!details.open)return;
+  const details=event.target;if(!details.matches?.(floatingDetails))return;
+  if(!details.open){const panel=details.querySelector('.floating-panel');if(panel?.matches(':popover-open'))panel.hidePopover();return;}
   for(const other of document.querySelectorAll(floatingDetails))if(other!==details)other.open=false;
   positionOpenPanels();
 },true);
@@ -382,7 +408,7 @@ function mountMobileLayout(){
   const dialog=document.createElement('dialog');dialog.id='mobile-params-dialog';
   dialog.setAttribute('aria-labelledby','mobile-params-title');
   const close=document.createElement('button');close.type='button';close.className='mobile-sheet-close';close.setAttribute('aria-label','关闭需求清单');
-  close.innerHTML='<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+  close.innerHTML=closeArtwork;
   close.onclick=()=>setRequirements(false);
   panel.querySelector('.card-heading').append(close);panel.querySelector('h2').id='mobile-params-title';grid.append(dialog);
   dialog.addEventListener('cancel',event=>{event.preventDefault();setRequirements(false);});
@@ -391,6 +417,27 @@ function mountMobileLayout(){
   panel.querySelector('[data-view="bom-view"]').addEventListener('click',()=>setRequirements(false));
   const privacy=$('.composer-privacy'),desktopPrivacy=privacy.textContent,input=$('#chat-input'),desktopPlaceholder=input.placeholder;
   const caption=$('.service-caption'),desktopCaption=caption.textContent;
+  const workspace=$('#workspace');
+  let focusHeight=0,keyboardWasOpen=false;
+  function syncInputState(){
+    const composing=mobile.matches&&document.body.dataset.view==='workspace'&&workspace.classList.contains('is-opening')&&document.activeElement===input;
+    workspace.classList.toggle('is-composing',composing);
+    for(const el of [$('#messages'),$('.quick-actions'),tools])el.inert=composing;
+  }
+  function syncViewport(){
+    const viewport=window.visualViewport;
+    if(mobile.matches&&document.body.dataset.view==='workspace'&&viewport&&Math.abs(viewport.scale-1)<.02){
+      document.documentElement.style.setProperty('--mobile-viewport-height',Math.round(viewport.height)+'px');
+      if(document.activeElement===input&&focusHeight){
+        if(focusHeight-viewport.height>120)keyboardWasOpen=true;
+        else if(keyboardWasOpen&&viewport.height>=focusHeight-60){keyboardWasOpen=false;input.blur();}
+      }
+    }else document.documentElement.style.removeProperty('--mobile-viewport-height');
+  }
+  input.addEventListener('focus',()=>{focusHeight=Math.max(window.visualViewport?.height||innerHeight,innerHeight);keyboardWasOpen=false;syncInputState();syncViewport();});
+  input.addEventListener('blur',()=>{focusHeight=0;keyboardWasOpen=false;queueMicrotask(syncInputState);});
+  document.addEventListener('pointerdown',event=>{if(mobile.matches&&document.activeElement===input&&!$('#chat-form').contains(event.target))input.blur();});
+  window.visualViewport?.addEventListener('resize',syncViewport);
   let wasMobile=false;
   function sizeInput(){
     if(mobile.matches){input.style.height='0px';input.style.height=Math.min(108,Math.max(36,input.scrollHeight))+'px';}
@@ -417,6 +464,7 @@ function mountMobileLayout(){
       privacy.textContent=desktopPrivacy;input.placeholder=desktopPlaceholder;caption.textContent=desktopCaption;
     }
     if(isMobile!==wasMobile){wasMobile=isMobile;sizeInput();}
+    syncInputState();syncViewport();
   }
   return {sync};
 }
