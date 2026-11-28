@@ -424,6 +424,35 @@ function mountMobileLayout(){
   const workspace=$('#workspace');
   let focusHeight=0,keyboardWasOpen=false,keyboardMinimum=Infinity,viewportFrame=0,lastViewportHeight=0;
   let closing=false,closeFrame=0,closeStarted=0,closeStable=0,closeGeometry='';
+  let reopenGuard=false,reopenFrame=0,reopenStarted=0,reopenHighest=0,reopenStable=0,reopenGeometry='',reopenSawOpen=false;
+  function cancelReopening(){
+    if(reopenFrame)cancelAnimationFrame(reopenFrame);reopenFrame=0;reopenGuard=false;
+  }
+  function settleReopening(){
+    reopenFrame=0;if(!reopenGuard)return;
+    if(document.activeElement!==input||!mobile.matches||document.body.dataset.view!=='workspace'){cancelReopening();return;}
+    const viewport=window.visualViewport,height=viewport?.height||innerHeight;
+    const elapsed=performance.now()-reopenStarted;
+    if(viewport&&Math.abs(viewport.scale-1)>=.02){
+      if(elapsed>=1200){cancelReopening();return;}
+      reopenFrame=requestAnimationFrame(settleReopening);return;
+    }
+    const geometry=Math.round(height)+':'+Math.round(viewport?.offsetTop||0);
+    reopenStable=geometry===reopenGeometry?reopenStable+1:0;reopenGeometry=geometry;
+    reopenHighest=Math.max(reopenHighest,height);
+    if(reopenHighest-height>24&&focusHeight-height>120)reopenSawOpen=true;
+    // Ignore the previous dismissal's tail until the new keyboard has settled.
+    if((reopenStable>=3&&(reopenSawOpen||elapsed>=320))||elapsed>=1200){
+      cancelReopening();keyboardWasOpen=focusHeight-height>120;keyboardMinimum=keyboardWasOpen?height:Infinity;
+      if(reopenSawOpen&&!keyboardWasOpen)beginClosing();
+      return;
+    }
+    reopenFrame=requestAnimationFrame(settleReopening);
+  }
+  function guardReopening(){
+    cancelReopening();reopenGuard=true;reopenStarted=performance.now();reopenHighest=window.visualViewport?.height||innerHeight;
+    reopenStable=0;reopenGeometry='';reopenSawOpen=false;reopenFrame=requestAnimationFrame(settleReopening);
+  }
   function cancelClosing(){
     if(closeFrame)cancelAnimationFrame(closeFrame);closeFrame=0;closing=false;
     workspace.classList.remove('is-closing');
@@ -436,7 +465,7 @@ function mountMobileLayout(){
     for(const el of [$('#messages'),$('.quick-actions'),tools])el.inert=composing;
   }
   function completeClosing(){
-    cancelClosing();focusHeight=0;keyboardWasOpen=false;keyboardMinimum=Infinity;syncInputState();
+    cancelClosing();cancelReopening();focusHeight=0;keyboardWasOpen=false;keyboardMinimum=Infinity;syncInputState();
   }
   function settleClosing(){
     closeFrame=0;if(!closing)return;
@@ -454,6 +483,8 @@ function mountMobileLayout(){
   function beginClosing(){
     if(closing)return;
     if(!mobile.matches||document.body.dataset.view!=='workspace'||!workspace.classList.contains('is-editing')){syncInputState();return;}
+    cancelReopening();
+    if(focusHeight-(window.visualViewport?.height||innerHeight)>120)keyboardWasOpen=true;
     const height=form.getBoundingClientRect().height||108;
     form.style.setProperty('--mobile-close-scale',String(60/height));
     form.style.setProperty('--mobile-close-shift',Math.max(0,height-63)+'px');
@@ -475,7 +506,7 @@ function mountMobileLayout(){
       if(Math.abs(viewport.scale-1)>=.02)return;
       const height=Math.round(viewport.height+Math.max(0,viewport.offsetTop||0));
       if(height!==lastViewportHeight){lastViewportHeight=height;document.documentElement.style.setProperty('--mobile-viewport-height',height+'px');}
-      if(document.activeElement===input&&focusHeight){
+      if(document.activeElement===input&&focusHeight&&!reopenGuard){
         if(focusHeight-viewport.height>120){keyboardWasOpen=true;keyboardMinimum=Math.min(keyboardMinimum,viewport.height);}
         if(keyboardWasOpen&&viewport.height>keyboardMinimum+24)beginClosing();
       }
@@ -492,7 +523,8 @@ function mountMobileLayout(){
     const toolsFrom=reopening?getComputedStyle(tools).transform:'none';
     cancelClosing();
     focusHeight=Math.max(focusHeight,window.visualViewport?.height||innerHeight,innerHeight);
-    if(!reopening){keyboardWasOpen=false;keyboardMinimum=Infinity;}
+    cancelReopening();keyboardWasOpen=false;keyboardMinimum=Infinity;
+    if(reopening)guardReopening();
     syncInputState();const height=sizeInput()||36;
     form.style.setProperty('--mobile-surface-open-from',surfaceFrom||`scaleY(${60/(height+72)})`);
     form.style.setProperty('--mobile-text-open-from',textFrom||`translateY(${height+9}px)`);
@@ -513,7 +545,7 @@ function mountMobileLayout(){
   input.addEventListener('input',sizeInput);$('#chat-form').addEventListener('submit',()=>queueMicrotask(sizeInput));
   function sync(){
     const isMobile=mobile.matches;
-    if(!isMobile||document.body.dataset.view!=='workspace'){cancelClosing();focusHeight=0;keyboardWasOpen=false;keyboardMinimum=Infinity;}
+    if(!isMobile||document.body.dataset.view!=='workspace'){cancelClosing();cancelReopening();focusHeight=0;keyboardWasOpen=false;keyboardMinimum=Infinity;}
     if(isMobile){
       if(!dock.isConnected)card.append(dock);
       if(form.parentElement!==dock)dock.append(tools,form,privacy);

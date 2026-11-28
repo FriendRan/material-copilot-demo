@@ -13,7 +13,7 @@ test('手机输入：焦点展开，模拟视口缩小及偏移，键盘关闭�
   assert.equal($('#messages').inert,true);
   vv.height=510;vv.dispatchEvent(new win.Event('resize'));
   await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='510px');
-  assert.equal(win.document.activeElement,input);assert.equal(input.value,'四层板，10块');
+  assert.equal(win.document.activeElement.id,input.id);assert.equal(input.value,'四层板，10块');
   vv.offsetTop=12;vv.dispatchEvent(new win.Event('scroll'));
   await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='522px');
   vv.height=844;vv.offsetTop=0;vv.dispatchEvent(new win.Event('resize'));
@@ -29,7 +29,7 @@ test('手机输入：缩放不误判键盘关闭，发送后消息与参数确�
   input.focus();vv.height=500;vv.dispatchEvent(new win.Event('resize'));
   await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='500px');
   vv.scale=1.5;vv.height=844;vv.dispatchEvent(new win.Event('resize'));await new Promise(resolve=>setTimeout(resolve,30));
-  assert.equal(win.document.activeElement,input);assert.equal(win.document.documentElement.style.getPropertyValue('--mobile-viewport-height'),'500px');
+  assert.equal(win.document.activeElement.id,input.id);assert.equal(win.document.documentElement.style.getPropertyValue('--mobile-viewport-height'),'500px');
   vv.scale=1;vv.height=500;page.submit('4层，100x80mm，10块，沉金，7天');await flush();
   assert.equal($('#workspace').classList.contains('is-composing'),false);assert.equal($('#messages').inert,false);
   $('#confirm-params').click();assert.equal(page.state().params.quantity,'10');
@@ -85,6 +85,55 @@ test('键盘收起中重新输入：取消旧收尾，焦点与草稿不会被�
   input.blur();await flush();assert.equal(workspace.classList.contains('is-closing'),true);
   input.focus();assert.equal(workspace.classList.contains('is-closing'),false);
   await new Promise(resolve=>setTimeout(resolve,350));
-  assert.equal(win.document.activeElement,input);assert.equal(workspace.classList.contains('is-editing'),true);assert.equal(input.value,'继续输入');
+  assert.equal(win.document.activeElement.id,input.id);assert.equal(workspace.classList.contains('is-editing'),true);assert.equal(input.value,'继续输入');
  }finally{await page.close();}
 });
+
+test('键盘收起至半途再点击：当前高度和迟到的收起事件不能再次抢走焦点',async()=>{
+ const page=await mount({viewport:{width:390,height:844}});
+ try{
+  const {$,win}=page,input=$('#chat-input'),vv=win.visualViewport,workspace=$('#workspace');
+  input.value='半途继续输入';input.dispatchEvent(new win.Event('input',{bubbles:true}));input.focus();
+  vv.height=500;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='500px');
+  vv.height=650;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>workspace.classList.contains('is-closing'));
+  input.focus();assert.equal(win.document.activeElement.id,input.id);assert.equal(workspace.classList.contains('is-closing'),false);
+  vv.height=720;vv.dispatchEvent(new win.Event('resize'));await flush();
+  assert.equal(win.document.activeElement.id,input.id);assert.equal(workspace.classList.contains('is-closing'),false);
+  vv.height=500;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='500px');
+  assert.equal(win.document.activeElement.id,input.id);assert.equal(input.value,'半途继续输入');
+  await new Promise(resolve=>setTimeout(resolve,400));
+  vv.height=844;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>!workspace.classList.contains('is-editing'));
+  assert.equal(input.value,'半途继续输入');assert.equal($('#messages').inert,false);
+ }finally{await page.close();}
+});
+
+test('连续四次开合：状态完整恢复，不重复建立输入区，也不丢失或发送草稿',async()=>{
+ const page=await mount({viewport:{width:360,height:640}});
+ try{
+  const {$,win}=page,input=$('#chat-input'),vv=win.visualViewport,workspace=$('#workspace');
+  for(let cycle=0;cycle<4;cycle++){
+   input.focus();input.value='连续开合草稿 '+cycle;input.dispatchEvent(new win.Event('input',{bubbles:true}));
+   vv.height=360;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='360px');
+   vv.height=440;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>workspace.classList.contains('is-closing'));
+   vv.height=640;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>!workspace.classList.contains('is-editing'));
+   assert.equal(workspace.classList.contains('is-composing'),false);assert.equal(workspace.classList.contains('is-closing'),false);
+   assert.equal($('#messages').inert,false);assert.equal(input.value,'连续开合草稿 '+cycle);
+   assert.equal(win.document.querySelectorAll('.mobile-composer-dock').length,1);
+  }
+  assert.equal(page.requests.length,0);assert.equal(page.state().messages.length,1);
+ }finally{await page.close();}
+});
+
+test('半途重入后立即再次收起：不能遗留展开和首屏禁用状态',async()=>{
+ const page=await mount({viewport:{width:390,height:844}});
+ try{
+  const {$,win}=page,input=$('#chat-input'),vv=win.visualViewport,workspace=$('#workspace');
+  input.focus();input.value='快速往返草稿';input.dispatchEvent(new win.Event('input',{bubbles:true}));
+  vv.height=500;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='500px');
+  vv.height=650;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>workspace.classList.contains('is-closing'));
+  input.focus();vv.height=500;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='500px');
+  vv.height=844;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>!workspace.classList.contains('is-editing'));
+  assert.equal($('#messages').inert,false);assert.equal(input.value,'快速往返草稿');assert.equal(page.requests.length,0);
+ }finally{await page.close();}
+});
+
