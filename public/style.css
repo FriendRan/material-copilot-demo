@@ -971,3 +971,30 @@ body.app-shell{background:var(--canvas);color:var(--ink)}
 @media(max-width:900px){:root{--sidebar-width:0px}}
 .app-shell .assistant.intro-message .bubble{color:#d2c7c2}
 
+
+/* Mobile composer: one dock follows the visual viewport, with no delayed lift. */
+@media(max-width:600px){
+ .app-shell .mobile-composer-dock{display:flex;flex-direction:column;flex:none;order:10;width:100%;margin-top:auto;padding-top:8px}
+ .app-shell #workspace.is-opening .mobile-composer-dock{order:2}
+ .app-shell .mobile-composer-dock .mobile-chat-tools,.app-shell #workspace.is-opening .mobile-composer-dock .mobile-chat-tools{margin-top:0;max-height:60px}
+ .app-shell #chat-form,.app-shell #workspace.is-opening.is-composing #chat-form{position:relative;inset:auto;display:block;flex:none;width:calc(100% - 40px);height:60px;min-height:60px;margin:0 auto;padding:0;border-radius:32px;overflow:hidden;transition:border-radius .3s cubic-bezier(.2,.7,.2,1),height .3s cubic-bezier(.2,.7,.2,1),border-color .2s,box-shadow .2s}
+ .app-shell #chat-input{position:absolute;top:11px;left:18px;width:calc(100% - 88px);height:36px!important;min-height:36px;max-height:108px;padding:3px 0;font-size:16px;line-height:30px;resize:none;overflow-y:hidden;transition:width .3s cubic-bezier(.2,.7,.2,1),top .3s cubic-bezier(.2,.7,.2,1)}
+ .app-shell .composer-footer{position:absolute;inset:auto 9px 9px auto;margin:0;min-height:40px;display:flex;align-items:center}
+ .app-shell .composer-footer>span{display:none}
+ .app-shell .composer-footer .send-button{width:40px;height:40px;min-height:40px;border-radius:50%;transition:border-radius .3s cubic-bezier(.2,.7,.2,1),background-color .15s}
+ .app-shell #workspace.is-editing #chat-form,.app-shell #workspace.is-opening.is-editing #chat-form{height:calc(var(--mobile-input-height,36px) + 72px);border-radius:22px}
+ .app-shell #workspace.is-editing #chat-input{top:14px;width:calc(100% - 36px);height:var(--mobile-input-height,36px)!important;overflow-y:auto}
+ .app-shell #workspace.is-editing .composer-footer .send-button{border-radius:13px}
+ .app-shell #workspace.is-opening .work-grid>.chat-card .messages{flex:0 1 auto;min-height:0;transition:opacity .52s cubic-bezier(.2,.6,.2,1),transform .62s cubic-bezier(.2,.6,.2,1)}
+ .app-shell #workspace.is-opening .quick-actions{flex:0 1 auto;min-height:0;overflow:hidden;transition:opacity .5s cubic-bezier(.2,.6,.2,1),transform .62s cubic-bezier(.2,.6,.2,1)}
+ .app-shell #workspace.is-opening.is-composing .work-grid>.chat-card .messages{max-height:360px;min-height:0;padding:68px 24px 32px;opacity:0;transform:translateY(-36px);overflow:hidden;pointer-events:none}
+ .app-shell #workspace.is-opening.is-composing .quick-actions{max-height:240px;margin:0 24px 24px;opacity:0;transform:translateY(-36px);pointer-events:none}
+ .app-shell #workspace.is-opening.is-composing .mobile-composer-dock .mobile-chat-tools{max-height:60px;margin-bottom:8px;opacity:0;transform:translateY(-16px);pointer-events:none;transition:opacity .45s ease,transform .6s cubic-bezier(.2,.6,.2,1)}
+ .app-shell #workspace.is-opening.is-composing .composer-privacy{position:static;inset:auto;width:100%;z-index:auto}
+ .app-shell .mobile-composer-dock .composer-privacy{margin:10px 0 max(14px,env(safe-area-inset-bottom))}
+ .app-shell #workspace .work-grid>.chat-card .messages{min-height:0}
+ .app-shell #workspace.is-editing .parameter-proposal{max-height:min(36dvh,max(96px,calc(var(--mobile-viewport-height,100dvh) - 330px)))}
+}
+@media(max-width:600px) and (max-height:740px){.app-shell #workspace.is-opening.is-composing .work-grid>.chat-card .messages{padding-top:24px;padding-bottom:20px}.app-shell #workspace.is-opening.is-composing .quick-actions{margin-bottom:12px}}
+@media(max-width:600px) and (max-height:580px){.app-shell #workspace.is-opening.is-composing .work-grid>.chat-card .messages{flex:1 1 0;contain:size;min-height:0;padding-block:18px}.app-shell #workspace.is-opening.is-composing .quick-actions{display:none}.app-shell .mobile-composer-dock .composer-privacy{margin-bottom:10px}}
+@media(max-width:600px) and (prefers-reduced-motion:reduce){.app-shell #chat-form,.app-shell #chat-input,.app-shell .composer-footer .send-button,.app-shell #workspace.is-opening.is-composing .mobile-composer-dock .mobile-chat-tools{transition:none!important}}

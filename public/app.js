@@ -416,37 +416,53 @@ function mountMobileLayout(){
   dialog.addEventListener('close',()=>{if(mobile.matches&&panel.dataset.expanded==='true')setRequirements(false);});
   panel.querySelector('[data-view="bom-view"]').addEventListener('click',()=>setRequirements(false));
   const privacy=$('.composer-privacy'),desktopPrivacy=privacy.textContent,input=$('#chat-input'),desktopPlaceholder=input.placeholder;
+  const form=$('#chat-form'),card=$('.chat-card');
+  const dock=document.createElement('div');dock.className='mobile-composer-dock';
   const caption=$('.service-caption'),desktopCaption=caption.textContent;
   const workspace=$('#workspace');
-  let focusHeight=0,keyboardWasOpen=false;
+  let focusHeight=0,keyboardWasOpen=false,viewportFrame=0;
   function syncInputState(){
-    const composing=mobile.matches&&document.body.dataset.view==='workspace'&&workspace.classList.contains('is-opening')&&document.activeElement===input;
+    const editing=mobile.matches&&document.body.dataset.view==='workspace'&&document.activeElement===input;
+    const composing=editing&&workspace.classList.contains('is-opening');
+    workspace.classList.toggle('is-editing',editing);
     workspace.classList.toggle('is-composing',composing);
     for(const el of [$('#messages'),$('.quick-actions'),tools])el.inert=composing;
   }
   function syncViewport(){
     const viewport=window.visualViewport;
-    if(mobile.matches&&document.body.dataset.view==='workspace'&&viewport&&Math.abs(viewport.scale-1)<.02){
-      document.documentElement.style.setProperty('--mobile-viewport-height',Math.round(viewport.height)+'px');
+    if(mobile.matches&&document.body.dataset.view==='workspace'&&viewport){
+      // Follow actual keyboard geometry each paint; never delay its rise with a timer.
+      // Pinch zoom is not a keyboard resize and must not dismiss the draft.
+      if(Math.abs(viewport.scale-1)>=.02)return;
+      document.documentElement.style.setProperty('--mobile-viewport-height',Math.round(viewport.height+Math.max(0,viewport.offsetTop||0))+'px');
       if(document.activeElement===input&&focusHeight){
         if(focusHeight-viewport.height>120)keyboardWasOpen=true;
         else if(keyboardWasOpen&&viewport.height>=focusHeight-60){keyboardWasOpen=false;input.blur();}
       }
     }else document.documentElement.style.removeProperty('--mobile-viewport-height');
   }
-  input.addEventListener('focus',()=>{focusHeight=Math.max(window.visualViewport?.height||innerHeight,innerHeight);keyboardWasOpen=false;syncInputState();syncViewport();});
+  function scheduleViewport(){
+    if(viewportFrame)return;
+    viewportFrame=requestAnimationFrame(()=>{viewportFrame=0;syncViewport();});
+  }
+  input.addEventListener('focus',()=>{focusHeight=Math.max(window.visualViewport?.height||innerHeight,innerHeight);keyboardWasOpen=false;syncInputState();sizeInput();syncViewport();});
   input.addEventListener('blur',()=>{focusHeight=0;keyboardWasOpen=false;queueMicrotask(syncInputState);});
   document.addEventListener('pointerdown',event=>{if(mobile.matches&&document.activeElement===input&&!$('#chat-form').contains(event.target))input.blur();});
-  window.visualViewport?.addEventListener('resize',syncViewport);
+  window.visualViewport?.addEventListener('resize',scheduleViewport);
+  window.visualViewport?.addEventListener('scroll',scheduleViewport);
   let wasMobile=false;
   function sizeInput(){
-    if(mobile.matches){input.style.height='0px';input.style.height=Math.min(108,Math.max(36,input.scrollHeight))+'px';}
-    else input.style.removeProperty('height');
+    if(mobile.matches){
+      input.style.removeProperty('height');form.style.setProperty('--mobile-input-height','0px');
+      form.style.setProperty('--mobile-input-height',Math.min(108,Math.max(36,input.scrollHeight))+'px');
+    }else{input.style.removeProperty('height');form.style.removeProperty('--mobile-input-height');}
   }
   input.addEventListener('input',sizeInput);$('#chat-form').addEventListener('submit',()=>queueMicrotask(sizeInput));
   function sync(){
     const isMobile=mobile.matches;
     if(isMobile){
+      if(!dock.isConnected)card.append(dock);
+      if(form.parentElement!==dock)dock.append(tools,form,privacy);
       if(toggle.parentElement!==tools)tools.prepend(toggle);
       if(settings.parentElement!==$('.sidebar-footer'))$('.sidebar-footer').prepend(settings);
       if(document.body.dataset.view==='workspace')$('#current-view-name').textContent='料知';
@@ -457,6 +473,7 @@ function mountMobileLayout(){
       if(expanded&&!dialog.open){document.querySelectorAll('.floating-panel').forEach(p=>{if(p.parentElement.tagName==='DETAILS')p.parentElement.open=false;});dialog.showModal();close.focus({preventScroll:true});}
       else if(!expanded&&dialog.open){dialog.close();toggle.focus({preventScroll:true});}
     }else{
+      if(dock.isConnected){dock.before(tools,form,privacy);dock.remove();}
       if(dialog.open)dialog.close();
       if(panel.parentElement!==grid)grid.append(panel);
       if(toggle.parentElement!==headerTools)headerTools.append(toggle);
