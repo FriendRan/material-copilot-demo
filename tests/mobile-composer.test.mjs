@@ -59,3 +59,32 @@ test('键盘连续 resize：不重写导航，同帧合并视口变化，重复�
   titleObserver.disconnect();heightObserver.disconnect();
  }finally{await page.close();}
 });
+
+test('键盘收起：失焦先保持展开布局，视口恢复后再回位且不丢草稿',async()=>{
+ const page=await mount({viewport:{width:390,height:844}});
+ try{
+  const {$,win}=page,input=$('#chat-input'),workspace=$('#workspace'),vv=win.visualViewport;
+  input.value='保留这条草稿';input.dispatchEvent(new win.Event('input',{bubbles:true}));input.focus();
+  vv.height=500;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='500px');
+  input.blur();await flush();assert.equal(workspace.classList.contains('is-closing'),true);
+  assert.equal(workspace.classList.contains('is-editing'),true);assert.equal($('#messages').inert,true);
+  vv.height=650;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='650px');
+  assert.equal(workspace.classList.contains('is-editing'),true);
+  vv.height=844;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>!workspace.classList.contains('is-closing'));
+  assert.equal(workspace.classList.contains('is-editing'),false);assert.equal($('#messages').inert,false);
+  assert.equal(input.value,'保留这条草稿');assert.equal(page.state().composer,'保留这条草稿');
+ }finally{await page.close();}
+});
+
+test('键盘收起中重新输入：取消旧收尾，焦点与草稿不会被迟到的回调清除',async()=>{
+ const page=await mount({viewport:{width:390,height:844}});
+ try{
+  const {$,win}=page,input=$('#chat-input'),workspace=$('#workspace'),vv=win.visualViewport;
+  input.value='继续输入';input.dispatchEvent(new win.Event('input',{bubbles:true}));input.focus();
+  vv.height=500;vv.dispatchEvent(new win.Event('resize'));await waitFor(()=>win.document.documentElement.style.getPropertyValue('--mobile-viewport-height')==='500px');
+  input.blur();await flush();assert.equal(workspace.classList.contains('is-closing'),true);
+  input.focus();assert.equal(workspace.classList.contains('is-closing'),false);
+  await new Promise(resolve=>setTimeout(resolve,350));
+  assert.equal(win.document.activeElement,input);assert.equal(workspace.classList.contains('is-editing'),true);assert.equal(input.value,'继续输入');
+ }finally{await page.close();}
+});

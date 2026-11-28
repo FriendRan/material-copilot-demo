@@ -1007,7 +1007,22 @@ body.app-shell{background:var(--canvas);color:var(--ink)}
  .app-shell #chat-input{transition:none}
  .app-shell #workspace.is-editing #chat-form:before{animation:mobile-input-surface .28s cubic-bezier(.2,.7,.2,1) both;will-change:transform}
  .app-shell #workspace.is-editing #chat-input{animation:mobile-input-text .28s cubic-bezier(.2,.7,.2,1) both}
- @keyframes mobile-input-surface{from{transform:scaleY(.56)}to{transform:scaleY(1)}}
- @keyframes mobile-input-text{from{transform:translateY(45px)}to{transform:translateY(0)}}
+ @keyframes mobile-input-surface{from{transform:var(--mobile-surface-open-from,scaleY(.56))}to{transform:scaleY(1)}}
+ @keyframes mobile-input-text{from{transform:var(--mobile-text-open-from,translateY(45px))}to{transform:translateY(0)}}
 }
 @media(max-width:600px) and (prefers-reduced-motion:reduce){.app-shell #chat-form:before,.app-shell #workspace.is-editing #chat-input{animation:none!important}}
+
+/* Keep expanded layout until the closing surface and keyboard have settled. */
+@media(max-width:600px){
+ .app-shell #workspace.is-editing.is-closing #chat-form{border-radius:32px}
+ .app-shell #workspace.is-editing.is-closing #chat-form:before{border-radius:32px / var(--mobile-close-radius-y,58px);transition:border-radius .28s cubic-bezier(.2,.7,.2,1);animation:mobile-input-surface-close .28s cubic-bezier(.2,.7,.2,1) both}
+ .app-shell #workspace.is-editing.is-closing #chat-input{height:36px!important;overflow:hidden;animation:mobile-input-text-close .28s cubic-bezier(.2,.7,.2,1) both}
+ .app-shell #workspace.is-editing.is-closing .composer-footer .send-button{border-radius:50%}
+ .app-shell #workspace.is-editing:not(.is-opening) .mobile-chat-tools{transition:opacity .45s ease;animation:mobile-tools-open .28s cubic-bezier(.2,.7,.2,1) both}
+ .app-shell #workspace.is-editing.is-closing:not(.is-opening) .mobile-chat-tools{animation:mobile-tools-close .28s cubic-bezier(.2,.7,.2,1) both}
+ @keyframes mobile-input-surface-close{from{transform:var(--mobile-surface-close-from,scaleY(1))}to{transform:scaleY(var(--mobile-close-scale,.56))}}
+ @keyframes mobile-input-text-close{from{transform:var(--mobile-text-close-from,translateY(0))}to{transform:translateY(var(--mobile-close-shift,45px))}}
+ @keyframes mobile-tools-close{from{transform:var(--mobile-tools-close-from,translateY(0))}to{transform:translateY(var(--mobile-close-delta,48px))}}
+ @keyframes mobile-tools-open{from{transform:var(--mobile-tools-open-from,translateY(0))}to{transform:translateY(0)}}
+}
+@media(max-width:600px) and (prefers-reduced-motion:reduce){.app-shell #workspace.is-editing .mobile-chat-tools,.app-shell #workspace.is-editing.is-closing #chat-input,.app-shell #workspace.is-editing.is-closing #chat-form:before{animation:none!important;transition:none!important}}
