@@ -354,7 +354,9 @@ function syncShell(){
   $('main').inert=compact&&document.body.classList.contains('navigation-open');
   mobileLayout?.sync();
 }
-window.addEventListener('resize',syncShell);
+// Keyboard height changes do not change navigation or responsive ownership.
+let shellWidth=innerWidth;
+window.addEventListener('resize',()=>{if(innerWidth!==shellWidth){shellWidth=innerWidth;syncShell();}});
 function updateExampleSelection(){for(const button of document.querySelectorAll('[data-example-prompt]'))button.setAttribute('aria-pressed',String($('#chat-input').value===button.dataset.examplePrompt));}
 for(const button of document.querySelectorAll('[data-example-prompt]'))button.onclick=()=>{$('#chat-input').value=button.dataset.examplePrompt;state.composer=button.dataset.examplePrompt;updateExampleSelection();save();$('#chat-input').scrollIntoView({behavior:'auto',block:'nearest'});$('#chat-input').focus({preventScroll:true});};
 // Keep disclosure panels anchored to their controls and inside the visible area.
@@ -420,7 +422,7 @@ function mountMobileLayout(){
   const dock=document.createElement('div');dock.className='mobile-composer-dock';
   const caption=$('.service-caption'),desktopCaption=caption.textContent;
   const workspace=$('#workspace');
-  let focusHeight=0,keyboardWasOpen=false,viewportFrame=0;
+  let focusHeight=0,keyboardWasOpen=false,viewportFrame=0,lastViewportHeight=0;
   function syncInputState(){
     const editing=mobile.matches&&document.body.dataset.view==='workspace'&&document.activeElement===input;
     const composing=editing&&workspace.classList.contains('is-opening');
@@ -434,12 +436,13 @@ function mountMobileLayout(){
       // Follow actual keyboard geometry each paint; never delay its rise with a timer.
       // Pinch zoom is not a keyboard resize and must not dismiss the draft.
       if(Math.abs(viewport.scale-1)>=.02)return;
-      document.documentElement.style.setProperty('--mobile-viewport-height',Math.round(viewport.height+Math.max(0,viewport.offsetTop||0))+'px');
+      const height=Math.round(viewport.height+Math.max(0,viewport.offsetTop||0));
+      if(height!==lastViewportHeight){lastViewportHeight=height;document.documentElement.style.setProperty('--mobile-viewport-height',height+'px');}
       if(document.activeElement===input&&focusHeight){
         if(focusHeight-viewport.height>120)keyboardWasOpen=true;
         else if(keyboardWasOpen&&viewport.height>=focusHeight-60){keyboardWasOpen=false;input.blur();}
       }
-    }else document.documentElement.style.removeProperty('--mobile-viewport-height');
+    }else if(lastViewportHeight){lastViewportHeight=0;document.documentElement.style.removeProperty('--mobile-viewport-height');}
   }
   function scheduleViewport(){
     if(viewportFrame)return;

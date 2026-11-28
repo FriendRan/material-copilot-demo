@@ -40,3 +40,22 @@ test('手机输入：缩放不误判键盘关闭，发送后消息与参数确�
   assert.equal(win.document.documentElement.style.getPropertyValue('--mobile-viewport-height'),'');
  }finally{await page.close();}
 });
+
+test('键盘连续 resize：不重写导航，同帧合并视口变化，重复尺寸不重写样式',async()=>{
+ const page=await mount({viewport:{width:390,height:844}});
+ try{
+  const {$,win}=page,vv=win.visualViewport,root=win.document.documentElement;
+  $('#chat-input').focus();await flush();
+  let titleWrites=0,heightWrites=0;
+  const titleObserver=new win.MutationObserver(events=>{titleWrites+=events.length;});
+  const heightObserver=new win.MutationObserver(events=>{heightWrites+=events.length;});
+  titleObserver.observe($('#current-view-name'),{childList:true,characterData:true,subtree:true});
+  heightObserver.observe(root,{attributes:true,attributeFilter:['style']});
+  for(let i=0;i<24;i++){vv.height=730-i*10;win.dispatchEvent(new win.Event('resize'));vv.dispatchEvent(new win.Event('resize'));}
+  await waitFor(()=>root.style.getPropertyValue('--mobile-viewport-height')==='500px');await flush();
+  assert.equal(titleWrites,0);assert.equal(heightWrites,1);
+  for(let i=0;i<12;i++)vv.dispatchEvent(new win.Event('resize'));
+  await new Promise(resolve=>setTimeout(resolve,30));await flush();assert.equal(heightWrites,1);
+  titleObserver.disconnect();heightObserver.disconnect();
+ }finally{await page.close();}
+});

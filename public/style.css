@@ -998,3 +998,16 @@ body.app-shell{background:var(--canvas);color:var(--ink)}
 @media(max-width:600px) and (max-height:740px){.app-shell #workspace.is-opening.is-composing .work-grid>.chat-card .messages{padding-top:24px;padding-bottom:20px}.app-shell #workspace.is-opening.is-composing .quick-actions{margin-bottom:12px}}
 @media(max-width:600px) and (max-height:580px){.app-shell #workspace.is-opening.is-composing .work-grid>.chat-card .messages{flex:1 1 0;contain:size;min-height:0;padding-block:18px}.app-shell #workspace.is-opening.is-composing .quick-actions{display:none}.app-shell .mobile-composer-dock .composer-privacy{margin-bottom:10px}}
 @media(max-width:600px) and (prefers-reduced-motion:reduce){.app-shell #chat-form,.app-shell #chat-input,.app-shell .composer-footer .send-button,.app-shell #workspace.is-opening.is-composing .mobile-composer-dock .mobile-chat-tools{transition:none!important}}
+
+/* Keyboard motion: change layout once, animate only the input surface and text. */
+@media(max-width:600px){
+ .app-shell #chat-form,.app-shell #chat-form:focus-within,.app-shell #workspace.is-opening.is-composing #chat-form{isolation:isolate;overflow:visible;border:0;background:transparent;box-shadow:none;transition:border-radius .26s cubic-bezier(.2,.7,.2,1)}
+ .app-shell #chat-form:before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;border:1px solid #8d756b;border-radius:inherit;background:linear-gradient(125deg,#52484a,#423b3f);box-shadow:inset 0 1px 0 #f4ded529,0 6px 18px #100b1015;transform-origin:50% 100%}
+ .app-shell #chat-form:focus-within:before{border-color:#d6a98f}
+ .app-shell #chat-input{transition:none}
+ .app-shell #workspace.is-editing #chat-form:before{animation:mobile-input-surface .28s cubic-bezier(.2,.7,.2,1) both;will-change:transform}
+ .app-shell #workspace.is-editing #chat-input{animation:mobile-input-text .28s cubic-bezier(.2,.7,.2,1) both}
+ @keyframes mobile-input-surface{from{transform:scaleY(.56)}to{transform:scaleY(1)}}
+ @keyframes mobile-input-text{from{transform:translateY(45px)}to{transform:translateY(0)}}
+}
+@media(max-width:600px) and (prefers-reduced-motion:reduce){.app-shell #chat-form:before,.app-shell #workspace.is-editing #chat-input{animation:none!important}}
